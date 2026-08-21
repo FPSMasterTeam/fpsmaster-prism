@@ -31,4 +31,9 @@ public interface UiHost {
     void blurBehind(float x, float y, float w, float h, float radius);
 
     ImageHandle image(String id);
+
+    /** Resolve a tinted icon/texture for a given on-screen size (hosts pick a resolution bucket). */
+    default ImageHandle image(String id, float drawSize) {
+        return image(id);
+    }
 }

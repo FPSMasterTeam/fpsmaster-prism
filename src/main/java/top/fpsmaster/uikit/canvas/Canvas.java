@@ -31,4 +31,14 @@ public interface Canvas {
     void pushAlpha(float alpha);
 
     void popAlpha();
+
+    /** Save the current 2D transform (translate/scale). Must pair with {@link #popTransform()}. */
+    void pushTransform();
+
+    void popTransform();
+
+    void translate(float x, float y);
+
+    /** Uniform 2D scale about the current origin. */
+    void scale(float s);
 }

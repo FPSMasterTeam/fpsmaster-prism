@@ -25,6 +25,7 @@ public final class FrameInput implements Input {
     private final List<Press> presses = new ArrayList<Press>();
     private final boolean[] buttonsDown = new boolean[8];
     private final Set<Integer> keysDown = new HashSet<Integer>();
+    private final Set<Integer> keyPresses = new HashSet<Integer>();
     private final StringBuilder typed = new StringBuilder();
 
     private int mouseX;
@@ -66,10 +67,17 @@ public final class FrameInput implements Input {
 
     public void setKeyDown(int keyCode, boolean down) {
         if (down) {
-            keysDown.add(Integer.valueOf(keyCode));
+            if (keysDown.add(Integer.valueOf(keyCode))) {
+                keyPresses.add(Integer.valueOf(keyCode));
+            }
         } else {
             keysDown.remove(Integer.valueOf(keyCode));
         }
+    }
+
+    public void pressKey(int keyCode) {
+        keyPresses.add(Integer.valueOf(keyCode));
+        keysDown.add(Integer.valueOf(keyCode));
     }
 
     public void type(String chars) {
@@ -84,6 +92,7 @@ public final class FrameInput implements Input {
         presses.clear();
         wheel = 0;
         typed.setLength(0);
+        keyPresses.clear();
     }
 
     public int mouseX() {
@@ -131,6 +140,19 @@ public final class FrameInput implements Input {
         return null;
     }
 
+    public boolean hasPressOutside(float x, float y, float w, float h) {
+        for (int i = 0; i < presses.size(); i++) {
+            Press press = presses.get(i);
+            if (press.consumed) {
+                continue;
+            }
+            if (!Hit.inside(x, y, w, h, press.event.x, press.event.y)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public int consumeWheelDelta(float x, float y, float w, float h) {
         if (!Hit.inside(x, y, w, h, mouseX, mouseY)) {
             return 0;
@@ -175,6 +197,10 @@ public final class FrameInput implements Input {
 
     public boolean isKeyDown(int keyCode) {
         return keysDown.contains(Integer.valueOf(keyCode));
+    }
+
+    public boolean consumeKey(int keyCode) {
+        return keyPresses.remove(Integer.valueOf(keyCode));
     }
 
     public String typedChars() {

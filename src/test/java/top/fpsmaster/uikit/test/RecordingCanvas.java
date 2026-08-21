@@ -75,6 +75,22 @@ public final class RecordingCanvas implements Canvas {
         ops.add("popAlpha");
     }
 
+    public void pushTransform() {
+        ops.add("pushTransform");
+    }
+
+    public void popTransform() {
+        ops.add("popTransform");
+    }
+
+    public void translate(float x, float y) {
+        ops.add("translate");
+    }
+
+    public void scale(float s) {
+        ops.add("scale");
+    }
+
     public int clipDepth() {
         return clipDepth;
     }

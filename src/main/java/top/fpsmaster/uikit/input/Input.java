@@ -16,6 +16,9 @@ public interface Input {
 
     PointerEvent consumePressOutside(float x, float y, float w, float h);
 
+    /** Look at an unconsumed outside press without claiming it. */
+    boolean hasPressOutside(float x, float y, float w, float h);
+
     int consumeWheelDelta(float x, float y, float w, float h);
 
     void markHovered(Object id, float x, float y, float w, float h);
@@ -29,6 +32,9 @@ public interface Input {
     void releaseDrag(Object owner);
 
     boolean isKeyDown(int keyCode);
+
+    /** One-shot key this frame (virtual {@link Keys} codes). */
+    boolean consumeKey(int keyCode);
 
     String typedChars();
 

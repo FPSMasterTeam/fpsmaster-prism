@@ -101,6 +101,19 @@ public final class Chrome {
         }
     }
 
+    public static void pillIconButton(UiFrame ui, float x, float y, float size, boolean hover) {
+        pillIconButton(ui, x, y, size, hover ? 1f : 0f);
+    }
+
+    public static void pillIconButton(UiFrame ui, float x, float y, float size, float hoverT) {
+        float t = hoverT < 0f ? 0f : (hoverT > 1f ? 1f : hoverT);
+        float r = size / 2f;
+        Theme theme = ui.theme();
+        strokeFill(ui.canvas(), x, y, size, size, r,
+                Argb.lerp(theme.stroke(), theme.strokeStrong(), t),
+                Argb.lerp(theme.layer(), theme.layerHover(), t));
+    }
+
     public static boolean button(UiFrame ui, float x, float y, float w, float h,
                                  String label, ButtonStyle style) {
         boolean hover = ui.hovered(x, y, w, h);
@@ -130,8 +143,7 @@ public final class Chrome {
         if (label != null && !label.isEmpty()) {
             FontHandle font = ui.font(14);
             float tw = font.measure(label);
-            float ty = y + (h - font.lineHeight()) / 2f;
-            ui.canvas().drawString(font, label, x + (w - tw) / 2f, ty, textColor);
+            ui.canvas().drawString(font, label, x + (w - tw) / 2f, textY(y, h, font), textColor);
         }
         return ui.clicked(x, y, w, h);
     }
@@ -191,6 +203,44 @@ public final class Chrome {
                 Argb.of(64, 0, 0, 0));
     }
 
+    public static void pingBars(UiFrame ui, float x, float baselineY, int level, int litArgb) {
+        int dim = ui.theme().layerActive();
+        for (int i = 0; i < 4; i++) {
+            float h = 2f + i;
+            int c = i < level ? litArgb : dim;
+            ui.canvas().fillRoundRect(x + i * 2.25f, baselineY - h, 1.5f, h, 1f, c);
+        }
+    }
+
+    public static int pingLevel(long pingMs) {
+        if (pingMs < 0L) {
+            return 0;
+        }
+        if (pingMs < 80L) {
+            return 4;
+        }
+        if (pingMs < 150L) {
+            return 3;
+        }
+        if (pingMs < 300L) {
+            return 2;
+        }
+        return 1;
+    }
+
+    public static int pingColor(UiFrame ui, long pingMs) {
+        if (pingMs < 0L) {
+            return ui.theme().layerActive();
+        }
+        if (pingMs < 150L) {
+            return ui.theme().ok();
+        }
+        if (pingMs < 300L) {
+            return Argb.rgb(226, 185, 61);
+        }
+        return ui.theme().danger();
+    }
+
     public static void searchBox(UiFrame ui, float x, float y, float w, float h, boolean focused) {
         Theme theme = ui.theme();
         float r = h / 2f;
@@ -213,7 +263,7 @@ public final class Chrome {
         float w = tw + 8f;
         float h = 10f;
         ui.canvas().fillRoundRect(x, y, w, h, h / 2f, ui.theme().accentSoft());
-        ui.canvas().drawString(font, text, x + (w - tw) / 2f, y + (h - font.lineHeight()) / 2f,
+        ui.canvas().drawString(font, text, x + (w - tw) / 2f, textY(y, h, font),
                 ui.theme().accentText());
         return w;
     }
@@ -229,7 +279,7 @@ public final class Chrome {
         FontHandle font = ui.font(11);
         float tw = font.measure(text);
         int color = active ? theme.accentText() : theme.textSecondary();
-        ui.canvas().drawString(font, text, x + (w - tw) / 2f, y + (h - font.lineHeight()) / 2f, color);
+        ui.canvas().drawString(font, text, x + (w - tw) / 2f, textY(y, h, font), color);
     }
 
     private static void drawSwitchSized(UiFrame ui, float x, float y, float w, float h, boolean on, float knobT) {
@@ -240,6 +290,11 @@ public final class Chrome {
         float kx = x + 1.5f + (w - knob - 3f) * t;
         int knobAlpha = 217 + (int) (38 * t);
         ui.canvas().fillRoundRect(kx, y + 1.5f, knob, knob, knob / 2f, Argb.of(knobAlpha, 255, 255, 255));
+    }
+
+    /** Top of a string whose box of {@link FontHandle#lineHeight()} is vertically centered in {@code h}. */
+    public static float textY(float y, float h, FontHandle font) {
+        return y + (h - font.lineHeight()) * 0.5f;
     }
 
     private static void strokeFill(Canvas canvas, float x, float y, float w, float h, float radius,

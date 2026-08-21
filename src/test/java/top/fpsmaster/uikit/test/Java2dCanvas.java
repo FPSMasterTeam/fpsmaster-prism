@@ -12,6 +12,7 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Line2D;
 import java.awt.geom.RoundRectangle2D;
@@ -24,6 +25,7 @@ public final class Java2dCanvas implements Canvas {
     public final BufferedImage image;
     private final Graphics2D g;
     private final Deque<Float> alpha = new ArrayDeque<Float>();
+    private final Deque<AffineTransform> transforms = new ArrayDeque<AffineTransform>();
 
     public Java2dCanvas(int width, int height) {
         image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
@@ -111,6 +113,24 @@ public final class Java2dCanvas implements Canvas {
             alpha.pop();
         }
         g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha.peek().floatValue()));
+    }
+
+    public void pushTransform() {
+        transforms.push(g.getTransform());
+    }
+
+    public void popTransform() {
+        if (!transforms.isEmpty()) {
+            g.setTransform(transforms.pop());
+        }
+    }
+
+    public void translate(float x, float y) {
+        g.translate(x, y);
+    }
+
+    public void scale(float s) {
+        g.scale(s, s);
     }
 
     public void dispose() {
