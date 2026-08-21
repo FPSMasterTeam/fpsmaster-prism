@@ -30,7 +30,7 @@ tasks.test {
 publishing {
     publications {
         create<MavenPublication>("maven") {
-            artifactId = "ui"
+            artifactId = "prism"
             from(components["java"])
         }
     }

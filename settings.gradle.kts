@@ -14,4 +14,4 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "fpsmaster-ui"
+rootProject.name = "fpsmaster-prism"
