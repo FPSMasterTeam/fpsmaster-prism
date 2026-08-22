@@ -73,6 +73,34 @@ class SharedScreenTest {
     }
 
     @Test
+    void cosmeticsDrawsEquipmentSlots() {
+        HeadlessHost host = new HeadlessHost(500, 320);
+        SharedCosmetics gui = new SharedCosmetics();
+        CosmeticsTestBridge bridge = new CosmeticsTestBridge();
+        gui.draw(new UiFrame(host, Theme.DARK), bridge);
+        assertTrue(host.canvas.has("drawString:cosmetics.cape"));
+        assertTrue(host.canvas.has("drawString:cosmetics.wings"));
+        host.input.endFrame();
+        host.input.setMouse(385, 140);
+        host.input.press(0, 385, 140);
+        gui.draw(new UiFrame(host, Theme.DARK), bridge);
+        assertTrue(bridge.wings);
+    }
+
+    private static final class CosmeticsTestBridge implements CosmeticsBridge {
+        boolean wings;
+        public String i18n(String key) { return key; }
+        public String playerName() { return "Steve"; }
+        public boolean capeEnabled() { return true; }
+        public void setCapeEnabled(boolean enabled) { }
+        public boolean wingsEnabled() { return wings; }
+        public void setWingsEnabled(boolean enabled) { wings = enabled; }
+        public float wingScale() { return 1f; }
+        public void setWingScale(float scale) { }
+        public void paintPlayerPreview(UiFrame ui, float x, float y, float w, float h, float yaw) { }
+    }
+
+    @Test
     void configProfilesDrawsActiveName() {
         HeadlessHost host = new HeadlessHost(500, 320);
         SharedConfigProfiles gui = new SharedConfigProfiles();

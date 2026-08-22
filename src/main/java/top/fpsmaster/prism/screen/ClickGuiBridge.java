@@ -45,6 +45,9 @@ public interface ClickGuiBridge {
 
     void openProfiles();
 
+    default void openCosmetics() {
+    }
+
     default void openHudEditor() {
     }
 
