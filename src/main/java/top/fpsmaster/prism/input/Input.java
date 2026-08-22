@@ -36,6 +36,9 @@ public interface Input {
     /** One-shot key this frame (virtual {@link Keys} codes). */
     boolean consumeKey(int keyCode);
 
+    /** One-shot platform key code for bind editors (LWJGL2 / GLFW). */
+    int consumeRawKey();
+
     String typedChars();
 
     String clipboard();

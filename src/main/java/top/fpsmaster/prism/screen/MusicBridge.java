@@ -1,5 +1,7 @@
 package top.fpsmaster.prism.screen;
 
+import top.fpsmaster.prism.widget.UiFrame;
+
 import java.util.List;
 
 public interface MusicBridge {
@@ -57,6 +59,41 @@ public interface MusicBridge {
 
     List<PlaylistRow> playlistRows();
 
+    default boolean supportsLogin() {
+        return false;
+    }
+
+    default void startLogin() {
+    }
+
+    default void stopLogin() {
+    }
+
+    default void logout() {
+    }
+
+    default String loginStatus() {
+        return "";
+    }
+
+    default void paintLoginQr(UiFrame ui, float x, float y, float size) {
+    }
+
+    default void submitQqCookie(String musicId, String musicKey) {
+    }
+
+    default boolean hasLyrics() {
+        return false;
+    }
+
+    default int currentLyricIndex() {
+        return -1;
+    }
+
+    default List<LyricRow> lyricRows() {
+        return java.util.Collections.emptyList();
+    }
+
     final class TrackRow {
         public final String name;
         public final String artists;
@@ -78,6 +115,16 @@ public interface MusicBridge {
         public PlaylistRow(String name, String count) {
             this.name = name;
             this.count = count;
+        }
+    }
+
+    final class LyricRow {
+        public final String text;
+        public final String translation;
+
+        public LyricRow(String text, String translation) {
+            this.text = text == null ? "" : text;
+            this.translation = translation == null ? "" : translation;
         }
     }
 }

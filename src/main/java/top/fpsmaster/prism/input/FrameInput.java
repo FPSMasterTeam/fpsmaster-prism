@@ -26,6 +26,7 @@ public final class FrameInput implements Input {
     private final boolean[] buttonsDown = new boolean[8];
     private final Set<Integer> keysDown = new HashSet<Integer>();
     private final Set<Integer> keyPresses = new HashSet<Integer>();
+    private int rawKey = -1;
     private final StringBuilder typed = new StringBuilder();
 
     private int mouseX;
@@ -80,6 +81,10 @@ public final class FrameInput implements Input {
         keysDown.add(Integer.valueOf(keyCode));
     }
 
+    public void pressRawKey(int keyCode) {
+        rawKey = keyCode;
+    }
+
     public void type(String chars) {
         if (chars != null) {
             typed.append(chars);
@@ -93,6 +98,7 @@ public final class FrameInput implements Input {
         wheel = 0;
         typed.setLength(0);
         keyPresses.clear();
+        rawKey = -1;
     }
 
     public int mouseX() {
@@ -201,6 +207,12 @@ public final class FrameInput implements Input {
 
     public boolean consumeKey(int keyCode) {
         return keyPresses.remove(Integer.valueOf(keyCode));
+    }
+
+    public int consumeRawKey() {
+        int key = rawKey;
+        rawKey = -1;
+        return key;
     }
 
     public String typedChars() {

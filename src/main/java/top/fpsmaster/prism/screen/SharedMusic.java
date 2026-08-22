@@ -15,24 +15,43 @@ public final class SharedMusic {
     private static final float NOW_W = 160f;
     private static final int BADGE = 0xFFD9A441;
 
-    private enum Tab {DISCOVER, PLAYLISTS, SEARCH}
+    private enum Tab {DISCOVER, PLAYLISTS, SEARCH, LYRICS}
 
     private Tab tab = Tab.DISCOVER;
     private final TextBox search = new TextBox();
+    private final TextBox qqId = new TextBox();
+    private final TextBox qqKey = new TextBox();
     private final Scroll scroll = new Scroll("music.list");
     private boolean discoverRequested;
+    private boolean loginOpen;
 
     public SharedMusic() {
         search.setPaintBox(false);
         search.setFontSize(12);
         search.setPadLeft(14f);
         search.setPlaceholder("搜索歌曲、歌手…");
+        qqId.setFontSize(12);
+        qqId.setPlaceholder("musicid (uin)");
+        qqKey.setFontSize(12);
+        qqKey.setPlaceholder("musickey (qm_keyst)");
+    }
+
+    public boolean cancelOverlay() {
+        if (!loginOpen) {
+            return false;
+        }
+        loginOpen = false;
+        return true;
     }
 
     public boolean draw(UiFrame ui, MusicBridge bridge) {
         if (!discoverRequested) {
             bridge.loadDiscover();
             discoverRequested = true;
+        }
+        if (loginOpen && bridge.loggedIn()) {
+            loginOpen = false;
+            bridge.stopLogin();
         }
         float gw = ui.host().width();
         float gh = ui.host().height();
@@ -44,6 +63,11 @@ public final class SharedMusic {
         Chrome.panel(ui, px, py, pw, ph);
         ui.canvas().fillRect(px + 1, py + 1, NOW_W - 1, ph - 2, Argb.of(40, 0, 0, 0));
         Chrome.hairlineV(ui, px + NOW_W, py + 1, ph - 2);
+
+        if (loginOpen) {
+            drawLogin(ui, bridge, px, py, pw, ph);
+            return false;
+        }
 
         drawNow(ui, bridge, px, py, NOW_W, ph);
 
@@ -154,6 +178,14 @@ public final class SharedMusic {
         GlyphIcons.draw(ui, "user", pillX + 4.5f, rowY + 4.5f, 6f, ui.theme().white());
         ui.canvas().drawString(ui.font(12), acc, pillX + 15f, Chrome.textY(rowY, rowH, ui.font(12)),
                 ui.theme().textPrimary());
+        if (bridge.supportsLogin() && ui.clicked(pillX, rowY, pillW, rowH)) {
+            if (bridge.loggedIn()) {
+                bridge.logout();
+            } else {
+                loginOpen = true;
+                bridge.startLogin();
+            }
+        }
 
         String[] labels = {"网易云", "QQ 音乐"};
         float segW = ui.font(12).measure(labels[0]) + ui.font(12).measure(labels[1]) + 32f;
@@ -180,11 +212,15 @@ public final class SharedMusic {
 
     private void drawToolbar(UiFrame ui, MusicBridge bridge, float x, float y, float w) {
         float h = Metrics.SEARCH_H;
-        Tab[] tabs = {Tab.DISCOVER, Tab.PLAYLISTS, Tab.SEARCH};
-        String[] labels = {"发现", "我的歌单", "搜索"};
+        Tab[] tabs = bridge.hasLyrics()
+                ? new Tab[]{Tab.DISCOVER, Tab.PLAYLISTS, Tab.SEARCH, Tab.LYRICS}
+                : new Tab[]{Tab.DISCOVER, Tab.PLAYLISTS, Tab.SEARCH};
+        String[] labels = bridge.hasLyrics()
+                ? new String[]{"发现", "我的歌单", "搜索", "歌词"}
+                : new String[]{"发现", "我的歌单", "搜索"};
         float ox = x + 14f;
-        ui.canvas().fillRoundRect(ox, y, 150f, h, h / 2f, ui.theme().layer());
-        float tw = 50f;
+        float tw = bridge.hasLyrics() ? 42f : 50f;
+        ui.canvas().fillRoundRect(ox, y, tw * tabs.length, h, h / 2f, ui.theme().layer());
         for (int i = 0; i < tabs.length; i++) {
             boolean selected = tab == tabs[i];
             if (selected) {
@@ -216,6 +252,10 @@ public final class SharedMusic {
     }
 
     private void drawList(UiFrame ui, MusicBridge bridge, float x, float y, float w, float h) {
+        if (tab == Tab.LYRICS) {
+            drawLyrics(ui, bridge, x, y, w, h);
+            return;
+        }
         if (tab == Tab.PLAYLISTS) {
             List<MusicBridge.PlaylistRow> rows = bridge.playlistRows();
             float contentH = Math.max(h, rows.size() * 18f + 8f);
@@ -273,6 +313,77 @@ public final class SharedMusic {
             }
         }
         scroll.end(ui);
+    }
+
+    private void drawLyrics(UiFrame ui, MusicBridge bridge, float x, float y, float w, float h) {
+        List<MusicBridge.LyricRow> rows = bridge.lyricRows();
+        int current = bridge.currentLyricIndex();
+        if (rows.isEmpty()) {
+            String empty = bridge.playing() ? "歌词加载中…" : "未在播放";
+            ui.canvas().drawString(ui.font(13), empty,
+                    x + (w - ui.font(13).measure(empty)) / 2f, y + h / 2f, ui.theme().textDisabled());
+            return;
+        }
+        float lineH = 16f;
+        float offset = current < 0 ? 0f : current * lineH - h / 2f + lineH / 2f;
+        for (int i = 0; i < rows.size(); i++) {
+            MusicBridge.LyricRow row = rows.get(i);
+            float ry = y + i * lineH - offset;
+            if (ry + lineH < y || ry > y + h || row.text.isEmpty()) continue;
+            int color = i == current ? ui.theme().textPrimary() : ui.theme().textDisabled();
+            String shown = ellipsize(ui.font(i == current ? 14 : 12), row.text, w - 16f);
+            float sw = ui.font(i == current ? 14 : 12).measure(shown);
+            if (i == current) {
+                FontBold.draw(ui, 14, shown, x + (w - sw) / 2f, ry, color);
+                if (!row.translation.isEmpty()) {
+                    String tr = ellipsize(ui.font(10), row.translation, w - 16f);
+                    ui.canvas().drawString(ui.font(10), tr, x + (w - ui.font(10).measure(tr)) / 2f,
+                            ry + 8f, ui.theme().textSecondary());
+                }
+            } else {
+                ui.canvas().drawString(ui.font(12), shown, x + (w - sw) / 2f, ry, color);
+            }
+        }
+    }
+
+    private void drawLogin(UiFrame ui, MusicBridge bridge, float px, float py, float pw, float ph) {
+        ui.canvas().fillRect(px, py, pw, ph, 0x99000000);
+        float w = 190f;
+        float h = bridge.qq() ? 202f : 132f;
+        float x = px + (pw - w) / 2f;
+        float y = py + (ph - h) / 2f;
+        Chrome.panel(ui, x, y, w, h);
+        FontBold.draw(ui, 16, (bridge.qq() ? "QQ 音乐" : "网易云") + " 登录",
+                x + 12f, y + 10f, ui.theme().textPrimary());
+        float closeX = x + w - 22f;
+        if (Chrome.button(ui, closeX, y + 7f, 14f, 14f, "×", Chrome.ButtonStyle.GHOST)) {
+            loginOpen = false;
+            bridge.stopLogin();
+            return;
+        }
+        float qr = 68f;
+        float qx = x + (w - qr) / 2f;
+        float qy = y + 28f;
+        ui.canvas().fillRoundRect(qx - 3f, qy - 3f, qr + 6f, qr + 6f, 6f, 0xFFFFFFFF);
+        bridge.paintLoginQr(ui, qx, qy, qr);
+        String status = bridge.loginStatus();
+        ui.canvas().drawString(ui.font(11), ellipsize(ui.font(11), status, w - 24f),
+                x + 12f, qy + qr + 7f, ui.theme().textSecondary());
+        if (Chrome.button(ui, x + (w - 64f) / 2f, qy + qr + 16f, 64f, 15f,
+                "刷新二维码", Chrome.ButtonStyle.DEFAULT)) {
+            bridge.startLogin();
+        }
+        if (bridge.qq()) {
+            float fieldX = x + 12f;
+            float fieldW = w - 24f;
+            float firstY = qy + qr + 38f;
+            qqId.draw(ui, fieldX, firstY, fieldW, 18f);
+            qqKey.draw(ui, fieldX, firstY + 22f, fieldW, 18f);
+            if (Chrome.button(ui, fieldX, firstY + 44f, fieldW, 16f,
+                    "Cookie 登录", Chrome.ButtonStyle.PRIMARY)) {
+                bridge.submitQqCookie(qqId.text(), qqKey.text());
+            }
+        }
     }
 
     private static String greeting(MusicBridge bridge) {
