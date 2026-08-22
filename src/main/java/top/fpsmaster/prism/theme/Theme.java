@@ -1,7 +1,7 @@
 package top.fpsmaster.prism.theme;
 
 /**
- * Dark/light tokens from {@code edge-ui.css}. Accent is {@code #5965F1}.
+ * Shared semantic tokens for every native FPSMaster surface.
  */
 public final class Theme {
     public static final Theme DARK = new Theme(false, false);
@@ -85,23 +85,23 @@ public final class Theme {
     }
 
     public int accent() {
-        return Argb.rgb(89, 101, 241);
+        return Argb.rgb(46, 174, 222);
     }
 
     public int accentHover() {
-        return Argb.rgb(107, 118, 255);
+        return Argb.rgb(68, 190, 232);
     }
 
     public int accentSoft() {
-        return Argb.of(41, 89, 101, 241);
+        return Argb.of(42, 46, 174, 222);
     }
 
     public int accentText() {
-        return Argb.rgb(170, 178, 255);
+        return light ? Argb.rgb(12, 112, 151) : Argb.rgb(126, 218, 246);
     }
 
     public int accentBorder() {
-        return Argb.of(90, 89, 101, 241);
+        return Argb.of(105, 46, 174, 222);
     }
 
     public int danger() {
@@ -114,6 +114,22 @@ public final class Theme {
 
     public int ok() {
         return Argb.rgb(62, 207, 142);
+    }
+
+    public int warning() {
+        return Argb.rgb(232, 178, 62);
+    }
+
+    public int input() {
+        return light ? Argb.rgb(250, 250, 250) : Argb.rgb(17, 20, 23);
+    }
+
+    public int inputHover() {
+        return light ? Argb.rgb(244, 248, 250) : Argb.rgb(21, 26, 30);
+    }
+
+    public int grid() {
+        return light ? Argb.of(22, 20, 80, 100) : Argb.of(25, 180, 220, 235);
     }
 
     public int toggleOff() {

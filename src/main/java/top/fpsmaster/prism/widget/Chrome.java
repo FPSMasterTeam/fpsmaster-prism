@@ -197,10 +197,17 @@ public final class Chrome {
     }
 
     public static void inputBox(UiFrame ui, float x, float y, float w, float h, boolean focused) {
+        inputBox(ui, x, y, w, h, focused ? 1f : 0f, ui.hovered(x, y, w, h) ? 1f : 0f);
+    }
+
+    public static void inputBox(UiFrame ui, float x, float y, float w, float h,
+                                float focusT, float hoverT) {
         Theme theme = ui.theme();
-        strokeFill(ui.canvas(), x, y, w, h, Metrics.CTL_RADIUS,
-                focused ? theme.accent() : theme.stroke(),
-                Argb.of(64, 0, 0, 0));
+        float focus = clamp01(focusT);
+        float hover = clamp01(hoverT);
+        int border = Argb.lerp(Argb.lerp(theme.stroke(), theme.strokeStrong(), hover), theme.accent(), focus);
+        int fill = Argb.lerp(theme.input(), theme.inputHover(), Math.max(hover, focus * 0.7f));
+        strokeFill(ui.canvas(), x, y, w, h, Metrics.CTL_RADIUS, border, fill);
     }
 
     public static void pingBars(UiFrame ui, float x, float baselineY, int level, int litArgb) {
@@ -299,8 +306,11 @@ public final class Chrome {
 
     private static void strokeFill(Canvas canvas, float x, float y, float w, float h, float radius,
                                    int stroke, int fill) {
-        canvas.fillRoundRect(x - 0.5f, y - 0.5f, w + 1f, h + 1f, radius + 1f, stroke);
         canvas.fillRoundRect(x, y, w, h, radius, fill);
+        if (w > 1f && h > 1f) {
+            canvas.strokeRoundRect(x + 0.5f, y + 0.5f, w - 1f, h - 1f,
+                    Math.max(0f, radius - 0.5f), 1f, stroke);
+        }
     }
 
     private static float clamp01(float t) {
