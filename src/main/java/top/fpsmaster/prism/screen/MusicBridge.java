@@ -79,6 +79,9 @@ public interface MusicBridge {
     default void paintLoginQr(UiFrame ui, float x, float y, float size) {
     }
 
+    default void paintCover(UiFrame ui, float x, float y, float size) {
+    }
+
     default void submitQqCookie(String musicId, String musicKey) {
     }
 
@@ -92,6 +95,13 @@ public interface MusicBridge {
 
     default List<LyricRow> lyricRows() {
         return java.util.Collections.emptyList();
+    }
+
+    default boolean lyricsHudEnabled() {
+        return false;
+    }
+
+    default void setLyricsHudEnabled(boolean enabled) {
     }
 
     final class TrackRow {

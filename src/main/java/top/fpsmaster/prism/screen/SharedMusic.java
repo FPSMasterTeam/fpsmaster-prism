@@ -15,15 +15,18 @@ public final class SharedMusic {
     private static final float NOW_W = 160f;
     private static final int BADGE = 0xFFD9A441;
 
-    private enum Tab {DISCOVER, PLAYLISTS, SEARCH, LYRICS}
+    private enum Tab {DISCOVER, PLAYLISTS, SEARCH}
 
     private Tab tab = Tab.DISCOVER;
     private final TextBox search = new TextBox();
     private final TextBox qqId = new TextBox();
     private final TextBox qqKey = new TextBox();
     private final Scroll scroll = new Scroll("music.list");
+    private final SharedLyrics lyrics = new SharedLyrics();
     private boolean discoverRequested;
     private boolean loginOpen;
+    private boolean immersiveLyrics;
+    private long lastNanos;
 
     public SharedMusic() {
         search.setPaintBox(false);
@@ -37,6 +40,10 @@ public final class SharedMusic {
     }
 
     public boolean cancelOverlay() {
+        if (immersiveLyrics) {
+            immersiveLyrics = false;
+            return true;
+        }
         if (!loginOpen) {
             return false;
         }
@@ -61,6 +68,11 @@ public final class SharedMusic {
         float px = (gw - pw) / 2f;
         float py = (gh - ph) / 2f;
         Chrome.panel(ui, px, py, pw, ph);
+
+        if (immersiveLyrics) {
+            drawImmersiveLyrics(ui, bridge, px, py, pw, ph);
+            return false;
+        }
         ui.canvas().fillRect(px + 1, py + 1, NOW_W - 1, ph - 2, Argb.of(40, 0, 0, 0));
         Chrome.hairlineV(ui, px + NOW_W, py + 1, ph - 2);
 
@@ -101,6 +113,7 @@ public final class SharedMusic {
         ui.canvas().fillRoundRect(cvX, cvY, cover, cover, 10f, ui.theme().layerActive());
         GlyphIcons.draw(ui, "music", cvX + cover / 2f - 12f, cvY + cover / 2f - 12f, 24f,
                 ui.theme().textDisabled());
+        bridge.paintCover(ui, cvX, cvY, cover);
         String title = bridge.nowTitle();
         String artist = bridge.status().isEmpty() ? bridge.nowArtist() : bridge.status();
         FontBold.draw(ui, 14, ellipsize(ui.font(14), title, w - 20f),
@@ -212,14 +225,10 @@ public final class SharedMusic {
 
     private void drawToolbar(UiFrame ui, MusicBridge bridge, float x, float y, float w) {
         float h = Metrics.SEARCH_H;
-        Tab[] tabs = bridge.hasLyrics()
-                ? new Tab[]{Tab.DISCOVER, Tab.PLAYLISTS, Tab.SEARCH, Tab.LYRICS}
-                : new Tab[]{Tab.DISCOVER, Tab.PLAYLISTS, Tab.SEARCH};
-        String[] labels = bridge.hasLyrics()
-                ? new String[]{"发现", "我的歌单", "搜索", "歌词"}
-                : new String[]{"发现", "我的歌单", "搜索"};
+        Tab[] tabs = new Tab[]{Tab.DISCOVER, Tab.PLAYLISTS, Tab.SEARCH};
+        String[] labels = new String[]{"发现", "我的歌单", "搜索"};
         float ox = x + 14f;
-        float tw = bridge.hasLyrics() ? 42f : 50f;
+        float tw = 42f;
         ui.canvas().fillRoundRect(ox, y, tw * tabs.length, h, h / 2f, ui.theme().layer());
         for (int i = 0; i < tabs.length; i++) {
             boolean selected = tab == tabs[i];
@@ -240,8 +249,15 @@ public final class SharedMusic {
                 }
             }
         }
-        float sw = 115f;
+        float lyricW = bridge.hasLyrics() ? 38f : 0f;
+        float sw = bridge.hasLyrics() ? 82f : 115f;
         float sx = x + w - 14f - sw;
+        if (bridge.hasLyrics()) {
+            float lx = sx - lyricW - 5f;
+            if (Chrome.button(ui, lx, y, lyricW, h, "歌词", Chrome.ButtonStyle.GHOST)) {
+                immersiveLyrics = true;
+            }
+        }
         Chrome.searchBox(ui, sx, y, sw, h, search.focused());
         GlyphIcons.draw(ui, "search", sx + 5f, y + (h - 7f) / 2f, 7f, ui.theme().textDisabled());
         search.draw(ui, sx, y, sw, h);
@@ -252,10 +268,6 @@ public final class SharedMusic {
     }
 
     private void drawList(UiFrame ui, MusicBridge bridge, float x, float y, float w, float h) {
-        if (tab == Tab.LYRICS) {
-            drawLyrics(ui, bridge, x, y, w, h);
-            return;
-        }
         if (tab == Tab.PLAYLISTS) {
             List<MusicBridge.PlaylistRow> rows = bridge.playlistRows();
             float contentH = Math.max(h, rows.size() * 18f + 8f);
@@ -315,35 +327,38 @@ public final class SharedMusic {
         scroll.end(ui);
     }
 
-    private void drawLyrics(UiFrame ui, MusicBridge bridge, float x, float y, float w, float h) {
-        List<MusicBridge.LyricRow> rows = bridge.lyricRows();
-        int current = bridge.currentLyricIndex();
-        if (rows.isEmpty()) {
-            String empty = bridge.playing() ? "歌词加载中…" : "未在播放";
-            ui.canvas().drawString(ui.font(13), empty,
-                    x + (w - ui.font(13).measure(empty)) / 2f, y + h / 2f, ui.theme().textDisabled());
-            return;
+    private void drawImmersiveLyrics(UiFrame ui, MusicBridge bridge, float x, float y, float w, float h) {
+        ui.canvas().fillRoundRect(x + 1f, y + 1f, w - 2f, h - 2f, Metrics.PANEL_RADIUS,
+                Argb.lerp(ui.theme().glass(), ui.theme().accentSoft(), 0.18f));
+        if (Chrome.button(ui, x + 10f, y + 9f, 48f, 17f, "返回", Chrome.ButtonStyle.GHOST)) {
+            immersiveLyrics = false;
         }
-        float lineH = 16f;
-        float offset = current < 0 ? 0f : current * lineH - h / 2f + lineH / 2f;
-        for (int i = 0; i < rows.size(); i++) {
-            MusicBridge.LyricRow row = rows.get(i);
-            float ry = y + i * lineH - offset;
-            if (ry + lineH < y || ry > y + h || row.text.isEmpty()) continue;
-            int color = i == current ? ui.theme().textPrimary() : ui.theme().textDisabled();
-            String shown = ellipsize(ui.font(i == current ? 14 : 12), row.text, w - 16f);
-            float sw = ui.font(i == current ? 14 : 12).measure(shown);
-            if (i == current) {
-                FontBold.draw(ui, 14, shown, x + (w - sw) / 2f, ry, color);
-                if (!row.translation.isEmpty()) {
-                    String tr = ellipsize(ui.font(10), row.translation, w - 16f);
-                    ui.canvas().drawString(ui.font(10), tr, x + (w - ui.font(10).measure(tr)) / 2f,
-                            ry + 8f, ui.theme().textSecondary());
-                }
-            } else {
-                ui.canvas().drawString(ui.font(12), shown, x + (w - sw) / 2f, ry, color);
-            }
+        String title = ellipsize(ui.font(16), bridge.nowTitle(), w - 180f);
+        FontBold.draw(ui, 16, title, x + 70f, y + 9f, ui.theme().textPrimary());
+        ui.canvas().drawString(ui.font(11), ellipsize(ui.font(11), bridge.nowArtist(), w - 180f),
+                x + 70f, y + 21f, ui.theme().textSecondary());
+        String hud = bridge.lyricsHudEnabled() ? "HUD 已开启" : "显示在 HUD";
+        if (Chrome.button(ui, x + w - 82f, y + 9f, 70f, 17f, hud,
+                bridge.lyricsHudEnabled() ? Chrome.ButtonStyle.PRIMARY : Chrome.ButtonStyle.DEFAULT)) {
+            bridge.setLyricsHudEnabled(!bridge.lyricsHudEnabled());
         }
+        lyrics.drawImmersive(ui, bridge, x + 16f, y + 34f, w - 32f, h - 72f, dt(ui));
+        float barX = x + 42f;
+        float barW = w - 84f;
+        float barY = y + h - 27f;
+        float progress = bridge.progress();
+        float next = Chrome.slider(ui, "music.lyrics.progress", barX, barY, barW, progress);
+        if (Math.abs(next - progress) > 0.004f) bridge.seek(next);
+        if (ui.clicked(x + 14f, barY - 7f, 20f, 20f)) bridge.togglePause();
+        GlyphIcons.draw(ui, bridge.playing() && !bridge.paused() ? "pause" : "play",
+                x + 20f, barY - 1f, 8f, ui.theme().textPrimary());
+    }
+
+    private float dt(UiFrame ui) {
+        long now = ui.host().nowNanos();
+        float dt = lastNanos == 0L ? 0.016f : Math.min(0.05f, (now - lastNanos) / 1_000_000_000f);
+        lastNanos = now;
+        return dt < 0f ? 0.016f : dt;
     }
 
     private void drawLogin(UiFrame ui, MusicBridge bridge, float px, float py, float pw, float ph) {
