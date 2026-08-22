@@ -47,6 +47,24 @@ class SharedScreenTest {
     }
 
     @Test
+    void clickGuiUsesSharedVisibilityAndGroupMetadata() {
+        HeadlessHost host = new HeadlessHost(500, 320);
+        ClickBridge bridge = new ClickBridge();
+        bridge.withSettings = true;
+        SharedClickGui gui = new SharedClickGui("optimize");
+        host.input.setMouse(160, 46);
+        host.input.press(0, 160, 46);
+        gui.draw(new UiFrame(host, Theme.DARK), bridge);
+        for (int i = 0; i < 20; i++) {
+            host.input.endFrame();
+            gui.draw(new UiFrame(host, Theme.DARK), bridge);
+        }
+        assertTrue(host.canvas.has("drawString:Style"));
+        assertTrue(host.canvas.has("drawString:Round"));
+        assertTrue(!host.canvas.has("drawString:Secret"));
+    }
+
+    @Test
     void backgroundsDrawsTitle() {
         HeadlessHost host = new HeadlessHost(500, 320);
         SharedBackgrounds gui = new SharedBackgrounds();
@@ -140,6 +158,7 @@ class SharedScreenTest {
 
     private static final class ClickBridge implements ClickGuiBridge {
         final List<String> toggled = new ArrayList<String>();
+        boolean withSettings;
 
         public String i18n(String key) {
             return key;
@@ -178,6 +197,11 @@ class SharedScreenTest {
 
         public List<ModInfo> modules(String categoryId, String query) {
             List<SettingInfo> settings = new ArrayList<SettingInfo>();
+            if (withSettings) {
+                GroupInfo style = new GroupInfo("style", "Style");
+                settings.add(new SettingInfo("round", "Round", true).presentation(true, style));
+                settings.add(new SettingInfo("secret", "Secret", true).presentation(false, style));
+            }
             List<ModInfo> mods = new ArrayList<ModInfo>();
             mods.add(new ModInfo("sprint", "Sprint", false, true, settings));
             return mods;

@@ -73,6 +73,9 @@ public final class GlyphIcons {
         } else if ("chev-d".equals(name)) {
             canvas.line(x + s * 0.18f, y + s * 0.32f, x + s * 0.5f, y + s * 0.7f, w, argb);
             canvas.line(x + s * 0.5f, y + s * 0.7f, x + s * 0.82f, y + s * 0.32f, w, argb);
+        } else if ("chev-r".equals(name)) {
+            canvas.line(x + s * 0.32f, y + s * 0.18f, x + s * 0.7f, y + s * 0.5f, w, argb);
+            canvas.line(x + s * 0.7f, y + s * 0.5f, x + s * 0.32f, y + s * 0.82f, w, argb);
         } else {
             canvas.fillRect(x + s * 0.2f, y + s * 0.2f, s * 0.6f, s * 0.6f, argb);
         }

@@ -16,6 +16,12 @@ public interface ClickGuiBridge {
 
     String categoryIcon(String id);
 
+    default String settingGroupLabel(String id) {
+        String key = "clickgui.group." + id;
+        String translated = i18n(key);
+        return key.equals(translated) ? id : translated;
+    }
+
     int moduleCount(String categoryId);
 
     int enabledCount(String categoryId);
@@ -131,6 +137,14 @@ public interface ClickGuiBridge {
         public final List<ListItem> items;
         public final int maxItems;
         public final boolean editableItems;
+        public boolean visible = true;
+        public GroupInfo group;
+
+        public SettingInfo presentation(boolean visible, GroupInfo group) {
+            this.visible = visible;
+            this.group = group;
+            return this;
+        }
 
         public SettingInfo(String id, String label, boolean boolValue) {
             this.id = id;
@@ -266,6 +280,22 @@ public interface ClickGuiBridge {
             this.items = items == null ? java.util.Collections.<ListItem>emptyList() : items;
             this.maxItems = maxItems;
             this.editableItems = editableItems;
+        }
+    }
+
+    final class GroupInfo {
+        public final String id;
+        public final String label;
+        public final boolean collapsedByDefault;
+
+        public GroupInfo(String id, String label) {
+            this(id, label, false);
+        }
+
+        public GroupInfo(String id, String label, boolean collapsedByDefault) {
+            this.id = id == null ? "" : id;
+            this.label = label == null ? "" : label;
+            this.collapsedByDefault = collapsedByDefault;
         }
     }
 
