@@ -164,7 +164,7 @@ public final class SharedClickGui {
             my += Metrics.NAV_ITEM + 1f;
         }
 
-        int footerItems = bridge.hasWebUiToggle() ? 4 : 3;
+        int footerItems = bridge.hasWebUiToggle() ? 5 : 4;
         float footerY = y + height - 7f - (Metrics.NAV_ITEM + 1f) * footerItems;
         Chrome.hairlineH(ui, x + 7f, footerY - 4f, Metrics.SIDEBAR - 14f);
         if (sideNav(ui, navX, footerY, navW, bridge.i18n("clickgui.nav.music"), "music")) {
@@ -173,15 +173,19 @@ public final class SharedClickGui {
         if (sideNav(ui, navX, footerY + Metrics.NAV_ITEM + 1f, navW, bridge.i18n("configprofiles.button"), "folder")) {
             bridge.openProfiles();
         }
+        if (sideNav(ui, navX, footerY + (Metrics.NAV_ITEM + 1f) * 2f, navW,
+                bridge.i18n("hud.editor.title"), "sliders")) {
+            bridge.openHudEditor();
+        }
         boolean light = bridge.lightTheme();
         String themeLabel = bridge.i18n(light ? "clickgui.nav.theme.light" : "clickgui.nav.theme.dark");
-        if (sideNav(ui, navX, footerY + (Metrics.NAV_ITEM + 1f) * 2f, navW, themeLabel, light ? "sun" : "moon")) {
+        if (sideNav(ui, navX, footerY + (Metrics.NAV_ITEM + 1f) * 3f, navW, themeLabel, light ? "sun" : "moon")) {
             bridge.toggleTheme();
         }
         if (bridge.hasWebUiToggle()) {
             boolean web = bridge.webUi();
             String uiLabel = bridge.i18n(web ? "clickgui.nav.nativeui" : "clickgui.nav.webui");
-            if (sideNav(ui, navX, footerY + (Metrics.NAV_ITEM + 1f) * 3f, navW, uiLabel, web ? "grid" : "monitor")) {
+            if (sideNav(ui, navX, footerY + (Metrics.NAV_ITEM + 1f) * 4f, navW, uiLabel, web ? "grid" : "monitor")) {
                 bridge.toggleWebUi();
             }
         }

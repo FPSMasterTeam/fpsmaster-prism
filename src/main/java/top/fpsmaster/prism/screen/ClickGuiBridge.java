@@ -39,6 +39,9 @@ public interface ClickGuiBridge {
 
     void openProfiles();
 
+    default void openHudEditor() {
+    }
+
     default void setText(String moduleId, String settingId, String value) {
     }
 
