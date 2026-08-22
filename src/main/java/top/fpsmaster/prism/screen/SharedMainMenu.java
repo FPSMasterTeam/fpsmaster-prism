@@ -251,15 +251,6 @@ public final class SharedMainMenu {
         float w = ui.host().width();
         float musicX = w - 12f - size;
         float bgX = musicX - size - 4f;
-        if (bridge.showWebToggle()) {
-            float webX = bgX - size - 4f;
-            actionPill(ui, bridge, "web", "monitor", webX, y, size, dt,
-                    ui.hovered(webX, y, size, size) || bridge.webUi(), true, new Runnable() {
-                        public void run() {
-                            bridge.toggleWebUi();
-                        }
-                    });
-        }
         actionPill(ui, bridge, "bg", "image", bgX, y, size, dt,
                 ui.hovered(bgX, y, size, size), false, new Runnable() {
                     public void run() {

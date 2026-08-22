@@ -56,18 +56,6 @@ public interface MenuBridge {
         ui.canvas().fillRoundRect(x, y, size, size, 4f, ui.theme().accent());
     }
 
-    /** Nova shows a native/web chrome toggle on the main menu; Edge does not. */
-    default boolean showWebToggle() {
-        return false;
-    }
-
-    default boolean webUi() {
-        return false;
-    }
-
-    default void toggleWebUi() {
-    }
-
     default java.util.List<AccountRow> accounts() {
         return java.util.Collections.emptyList();
     }

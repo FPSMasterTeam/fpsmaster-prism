@@ -76,17 +76,6 @@ public interface ClickGuiBridge {
     default void setListItemKey(String moduleId, String settingId, int index, int keyCode) {
     }
 
-    default boolean webUi() {
-        return false;
-    }
-
-    default boolean hasWebUiToggle() {
-        return false;
-    }
-
-    default void toggleWebUi() {
-    }
-
     final class ModInfo {
         public final String id;
         public final String name;
