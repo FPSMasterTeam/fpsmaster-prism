@@ -4,6 +4,7 @@ import top.fpsmaster.prism.anim.Anim;
 import top.fpsmaster.prism.canvas.Canvas;
 import top.fpsmaster.prism.canvas.FontHandle;
 import top.fpsmaster.prism.icon.GlyphIcons;
+import top.fpsmaster.prism.icon.ModuleIcons;
 import top.fpsmaster.prism.theme.Argb;
 import top.fpsmaster.prism.theme.Metrics;
 import top.fpsmaster.prism.widget.Chrome;
@@ -292,8 +293,14 @@ public final class SharedClickGui {
         }
         FontHandle nameFont = ui.font(14);
         float nameRight = sx - (keyW > 0f ? keyW + 8f : 5f);
-        String name = ellipsize(nameFont, mod.name, nameRight - x - 8f);
-        ui.canvas().drawString(nameFont, name, x + 8f,
+        float iconSize = 10f;
+        float iconX = x + 8f;
+        GlyphIcons.draw(ui, ModuleIcons.resource(mod.id), iconX,
+                y + (Metrics.MODULE_ROW - iconSize) / 2f, iconSize,
+                mod.enabled ? ui.theme().accent() : ui.theme().textSecondary());
+        float nameX = iconX + iconSize + 7f;
+        String name = ellipsize(nameFont, mod.name, nameRight - nameX);
+        ui.canvas().drawString(nameFont, name, nameX,
                 Chrome.textY(y, Metrics.MODULE_ROW, nameFont), ui.theme().textPrimary());
         float knob = knob(mod.id, mod.enabled, dt);
         Chrome.drawSwitch(ui, sx, sy, mod.enabled, knob);
