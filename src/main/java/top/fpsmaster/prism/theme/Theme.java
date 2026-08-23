@@ -85,23 +85,23 @@ public final class Theme {
     }
 
     public int accent() {
-        return Argb.rgb(46, 174, 222);
+        return Argb.rgb(89, 101, 241);
     }
 
     public int accentHover() {
-        return Argb.rgb(68, 190, 232);
+        return Argb.rgb(107, 118, 255);
     }
 
     public int accentSoft() {
-        return Argb.of(42, 46, 174, 222);
+        return Argb.of(41, 89, 101, 241);
     }
 
     public int accentText() {
-        return light ? Argb.rgb(12, 112, 151) : Argb.rgb(126, 218, 246);
+        return Argb.rgb(170, 178, 255);
     }
 
     public int accentBorder() {
-        return Argb.of(105, 46, 174, 222);
+        return Argb.of(90, 89, 101, 241);
     }
 
     public int danger() {

@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 class ThemeTest {
     @Test
     void accentUsesSharedInteractionColor() {
-        assertEquals(0xFF2EAEDE, Theme.DARK.accent());
+        assertEquals(0xFF5965F1, Theme.DARK.accent());
         assertNotEquals(Theme.DARK.accent(), Theme.DARK.ok());
         assertNotEquals(Theme.DARK.accent(), Theme.DARK.warning());
         assertNotEquals(Theme.DARK.accent(), Theme.DARK.danger());
