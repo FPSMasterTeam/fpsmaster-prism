@@ -126,11 +126,7 @@ public final class SharedClickGui {
         ui.canvas().fillRect(x + 1, y + 1, Metrics.SIDEBAR - 1, height - 2, ui.theme().layer());
         Chrome.hairlineV(ui, x + Metrics.SIDEBAR, y + 1, height - 2);
 
-        ui.canvas().fillRoundRect(x + 7f, y + 7f, 12f, 12f, 4f, ui.theme().accent());
-        FontHandle badgeFont = ui.font(12);
-        float fW = badgeFont.measure("F");
-        ui.canvas().drawString(badgeFont, "F", x + 7f + (12f - fW) * 0.5f, Chrome.textY(y + 7f, 12f, badgeFont),
-                ui.theme().white());
+        GlyphIcons.draw(ui, "brand", x + 7f, y + 7f, 12f, ui.theme().white());
         FontHandle brandFont = ui.font(13);
         FontBold.draw(ui, 13, "FPSMaster", x + 23f, Chrome.textY(y + 6f, 10f, brandFont), ui.theme().textPrimary());
         FontHandle subFont = ui.font(10);
