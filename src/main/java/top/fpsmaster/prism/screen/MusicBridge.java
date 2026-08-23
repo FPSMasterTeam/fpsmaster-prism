@@ -5,6 +5,7 @@ import top.fpsmaster.prism.widget.UiFrame;
 import java.util.List;
 
 public interface MusicBridge {
+    enum PlaybackMode { SEQUENTIAL, SHUFFLE, REPEAT_ONE }
     String i18n(String key);
 
     boolean qq();
@@ -41,9 +42,26 @@ public interface MusicBridge {
 
     void prev();
 
+    default PlaybackMode playbackMode() {
+        return PlaybackMode.SEQUENTIAL;
+    }
+
+    default void setPlaybackMode(PlaybackMode mode) {
+    }
+
     void play(int index);
 
     List<TrackRow> tracks();
+
+    default List<TrackRow> localTracks() {
+        return java.util.Collections.emptyList();
+    }
+
+    default void importLocalMusic() {
+    }
+
+    default void playLocal(int index) {
+    }
 
     String listTitle();
 

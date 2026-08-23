@@ -13,6 +13,10 @@ public final class GlyphIcons {
     }
 
     public static void draw(UiFrame ui, String name, float x, float y, float size, int argb) {
+        if ("shuffle".equals(name) || "repeat".equals(name) || "repeat-one".equals(name)) {
+            drawFallback(ui.canvas(), name, x, y, size, argb);
+            return;
+        }
         ImageHandle image = ui.host().image(name, size);
         if (image != null) {
             ui.canvas().drawImage(image, x, y, size, size, argb);
@@ -52,6 +56,14 @@ public final class GlyphIcons {
             canvas.line(x + s * 0.18f, y + s * 0.28f, x + s * 0.82f, y + s * 0.28f, w, argb);
             canvas.line(x + s * 0.18f, y + s * 0.5f, x + s * 0.68f, y + s * 0.5f, w, argb);
             canvas.line(x + s * 0.18f, y + s * 0.72f, x + s * 0.76f, y + s * 0.72f, w, argb);
+        } else if ("shuffle".equals(name)) {
+            canvas.line(x + s * 0.18f, y + s * 0.3f, x + s * 0.42f, y + s * 0.3f, w, argb);
+            canvas.line(x + s * 0.42f, y + s * 0.3f, x + s * 0.72f, y + s * 0.7f, w, argb);
+            canvas.line(x + s * 0.18f, y + s * 0.7f, x + s * 0.42f, y + s * 0.7f, w, argb);
+            canvas.line(x + s * 0.42f, y + s * 0.7f, x + s * 0.72f, y + s * 0.3f, w, argb);
+        } else if ("repeat".equals(name) || "repeat-one".equals(name)) {
+            canvas.strokeRoundRect(x + s * 0.16f, y + s * 0.25f, s * 0.68f, s * 0.5f, s * 0.18f, w, argb);
+            if ("repeat-one".equals(name)) canvas.fillRect(x + s * 0.47f, y + s * 0.38f, s * 0.08f, s * 0.26f, argb);
         } else if ("folder".equals(name)) {
             canvas.strokeRoundRect(x + s * 0.12f, y + s * 0.32f, s * 0.76f, s * 0.5f, 1.2f, w, argb);
             canvas.fillRect(x + s * 0.12f, y + s * 0.22f, s * 0.32f, s * 0.14f, argb);

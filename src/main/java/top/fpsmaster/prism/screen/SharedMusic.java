@@ -16,7 +16,7 @@ public final class SharedMusic {
     private static final float NOW_W = 160f;
     private static final int BADGE = 0xFFD9A441;
 
-    private enum Tab {DISCOVER, PLAYLISTS, SEARCH}
+    private enum Tab {DISCOVER, PLAYLISTS, SEARCH, LOCAL}
 
     private Tab tab = Tab.DISCOVER;
     private final TextBox search = new TextBox();
@@ -169,6 +169,10 @@ public final class SharedMusic {
         if (ui.clicked(x + 16f, ctlCy - bs / 2f, bs, bs)) {
             bridge.setLyricsHudEnabled(!bridge.lyricsHudEnabled());
         }
+        iconCtl(ui, modeIcon(bridge.playbackMode()), x + w - 34f, ctlCy, bs, true);
+        if (ui.clicked(x + w - 34f, ctlCy - bs / 2f, bs, bs)) {
+            bridge.setPlaybackMode(nextMode(bridge.playbackMode()));
+        }
         float rowW = bs * 2f + ps + 12f;
         float ix = x + (w - rowW) / 2f;
         iconCtl(ui, "prev", ix, ctlCy, bs, false);
@@ -205,14 +209,13 @@ public final class SharedMusic {
 
     private void drawSettings(UiFrame ui, MusicBridge bridge, float x, float y, float w, float h) {
         FontBold.draw(ui, 16, "音乐设置", x + 14f, y + 10f, ui.theme().textPrimary());
-        ui.canvas().drawString(ui.font(11), "歌词显示", x + 14f, y + 22f, ui.theme().textSecondary());
+        ui.canvas().drawString(ui.font(11), "播放与歌词", x + 14f, y + 22f, ui.theme().textSecondary());
 
         float rowX = x + 14f;
         float rowW = w - 28f;
         float rowY = y + 44f;
-        settingToggle(ui, bridge, "桌面歌词", rowX, rowY, rowW, bridge.lyricsHudEnabled(), 0);
+        settingMode(ui, bridge, rowX, rowY, rowW);
         rowY += 30f;
-
         settingSlider(ui, bridge, "歌词字号", Math.round(bridge.lyricFontSize()) + " px",
                 rowX, rowY, rowW, (bridge.lyricFontSize() - 10f) / 20f, 0);
         rowY += 30f;
@@ -220,11 +223,29 @@ public final class SharedMusic {
                 rowX, rowY, rowW, (bridge.lyricLines() - 1f) / 4f, 1);
         rowY += 30f;
 
-        settingToggle(ui, bridge, "显示翻译", rowX, rowY, rowW, bridge.lyricTranslation(), 1);
+        float half = (rowW - 6f) / 2f;
+        settingToggle(ui, bridge, "桌面歌词", rowX, rowY, half, bridge.lyricsHudEnabled(), 0);
+        settingToggle(ui, bridge, "显示翻译", rowX + half + 6f, rowY, half, bridge.lyricTranslation(), 1);
         rowY += 30f;
-        settingToggle(ui, bridge, "平滑滚动", rowX, rowY, rowW, bridge.lyricScroll(), 2);
-        rowY += 30f;
-        settingToggle(ui, bridge, "歌词背景", rowX, rowY, rowW, bridge.lyricBackground(), 3);
+        settingToggle(ui, bridge, "平滑滚动", rowX, rowY, half, bridge.lyricScroll(), 2);
+        settingToggle(ui, bridge, "歌词背景", rowX + half + 6f, rowY, half, bridge.lyricBackground(), 3);
+    }
+
+    private void settingMode(UiFrame ui, MusicBridge bridge, float x, float y, float w) {
+        ui.canvas().fillRoundRect(x, y, w, 24f, 6f, ui.theme().layer());
+        ui.canvas().drawString(ui.font(12), "播放模式", x + 8f, Chrome.textY(y, 24f, ui.font(12)),
+                ui.theme().textPrimary());
+        MusicBridge.PlaybackMode[] modes = MusicBridge.PlaybackMode.values();
+        String[] labels = new String[]{"顺序", "乱序", "单曲"};
+        float bw = 38f;
+        float bx = x + w - 8f - bw * modes.length;
+        for (int i = 0; i < modes.length; i++) {
+            boolean selected = bridge.playbackMode() == modes[i];
+            if (Chrome.button(ui, bx + i * bw, y + 4f, bw - 2f, 16f, labels[i],
+                    selected ? Chrome.ButtonStyle.PRIMARY : Chrome.ButtonStyle.GHOST)) {
+                bridge.setPlaybackMode(modes[i]);
+            }
+        }
     }
 
     private void settingToggle(UiFrame ui, MusicBridge bridge, String label, float x, float y, float w,
@@ -309,8 +330,8 @@ public final class SharedMusic {
 
     private void drawToolbar(UiFrame ui, MusicBridge bridge, float x, float y, float w) {
         float h = Metrics.SEARCH_H;
-        Tab[] tabs = new Tab[]{Tab.DISCOVER, Tab.PLAYLISTS, Tab.SEARCH};
-        String[] labels = new String[]{"发现", "我的歌单", "搜索"};
+        Tab[] tabs = new Tab[]{Tab.DISCOVER, Tab.PLAYLISTS, Tab.SEARCH, Tab.LOCAL};
+        String[] labels = new String[]{"发现", "歌单", "搜索", "本地"};
         float ox = x + 14f;
         float tw = 42f;
         ui.canvas().fillRoundRect(ox, y, tw * tabs.length, h, h / 2f, ui.theme().layer());
@@ -372,14 +393,22 @@ public final class SharedMusic {
             scroll.end(ui);
             return;
         }
-        List<MusicBridge.TrackRow> tracks = bridge.tracks();
-        ui.canvas().drawString(ui.font(12), bridge.listTitle(), x, y - 1f, ui.theme().textDisabled());
+        List<MusicBridge.TrackRow> tracks = tab == Tab.LOCAL ? bridge.localTracks() : bridge.tracks();
+        if (tab == Tab.LOCAL) {
+            if (Chrome.button(ui, x + w - 64f, y - 4f, 64f, 15f, "导入音乐", Chrome.ButtonStyle.DEFAULT)) {
+                bridge.importLocalMusic();
+            }
+        }
+        ui.canvas().drawString(ui.font(12), tab == Tab.LOCAL ? "本地音乐" : bridge.listTitle(),
+                x, y - 1f, ui.theme().textDisabled());
         float listY = y + 12f;
         float listH = h - 12f;
         float contentH = Math.max(listH, tracks.size() * 16f + 4f);
         float off = scroll.begin(ui, x, listY, w, listH, contentH);
         if (tracks.isEmpty()) {
-            ui.canvas().drawString(ui.font(13), tab == Tab.SEARCH ? "输入关键字并回车搜索" : "加载中…",
+            String empty = tab == Tab.SEARCH ? "输入关键字并回车搜索"
+                    : tab == Tab.LOCAL ? "导入 MP3、WAV 或 AIFF 文件" : "加载中…";
+            ui.canvas().drawString(ui.font(13), empty,
                     x, listY + 8f + off, ui.theme().textDisabled());
         }
         for (int i = 0; i < tracks.size(); i++) {
@@ -398,7 +427,8 @@ public final class SharedMusic {
             ui.canvas().drawString(ui.font(10), row.duration, x + w - 6f - ui.font(10).measure(row.duration),
                     Chrome.textY(ry, 15f, ui.font(10)), ui.theme().textDisabled());
             if (ui.clicked(x, ry, w, 15f)) {
-                bridge.play(i);
+                if (tab == Tab.LOCAL) bridge.playLocal(i);
+                else bridge.play(i);
             }
         }
         scroll.end(ui);
@@ -497,6 +527,18 @@ public final class SharedMusic {
             return "热歌榜已更新";
         }
         return bridge.loggedIn() ? "每日推荐已更新" : "登录后查看每日推荐";
+    }
+
+    private static MusicBridge.PlaybackMode nextMode(MusicBridge.PlaybackMode mode) {
+        if (mode == MusicBridge.PlaybackMode.SEQUENTIAL) return MusicBridge.PlaybackMode.SHUFFLE;
+        if (mode == MusicBridge.PlaybackMode.SHUFFLE) return MusicBridge.PlaybackMode.REPEAT_ONE;
+        return MusicBridge.PlaybackMode.SEQUENTIAL;
+    }
+
+    private static String modeIcon(MusicBridge.PlaybackMode mode) {
+        if (mode == MusicBridge.PlaybackMode.SHUFFLE) return "shuffle";
+        if (mode == MusicBridge.PlaybackMode.REPEAT_ONE) return "repeat-one";
+        return "repeat";
     }
 
     private static String formatMs(long ms) {
