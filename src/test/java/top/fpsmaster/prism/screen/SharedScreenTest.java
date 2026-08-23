@@ -73,6 +73,12 @@ class SharedScreenTest {
     }
 
     @Test
+    void colorPickerKeepsCompactAspectRatio() {
+        assertEquals(160f, SharedClickGui.colorPickerWidth(540f, false));
+        assertEquals(80f, SharedClickGui.colorPickerHeight(160f));
+    }
+
+    @Test
     void cosmeticsDrawsEquipmentSlots() {
         HeadlessHost host = new HeadlessHost(500, 320);
         SharedCosmetics gui = new SharedCosmetics();

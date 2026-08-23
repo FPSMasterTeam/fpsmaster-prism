@@ -23,6 +23,8 @@ public final class SharedClickGui {
     private static final float SETTING_ROW = 19f;
     private static final float GROUP_ROW = 18f;
     private static final float OPTION_ROW = 17f;
+    private static final float COLOR_PICKER_MAX_W = 160f;
+    private static final float COLOR_PICKER_MAX_H = 80f;
     private static final float OPEN_SEC = 0.2f;
     private static final float KNOB_SPEED = 0.25f;
     private static final float EXPAND_SPEED = 0.2f;
@@ -446,8 +448,8 @@ public final class SharedClickGui {
         }
         float pickerX = x + 10f;
         float pickerY = y + SETTING_ROW + 3f;
-        float pickerW = Math.max(72f, w - (s.options.isEmpty() ? 20f : 82f));
-        float pickerH = Math.max(47f, s.options.size() * 16f - 2f);
+        float pickerW = colorPickerWidth(w, !s.options.isEmpty());
+        float pickerH = colorPickerHeight(pickerW);
         int hueColor = java.awt.Color.HSBtoRGB(s.hue, 1f, 1f) | 0xFF000000;
         ui.canvas().fillGradientH(pickerX, pickerY, pickerW, pickerH, 0xFFFFFFFF, hueColor);
         ui.canvas().fillGradientV(pickerX, pickerY, pickerW, pickerH, 0x00000000, 0xFF000000);
@@ -465,7 +467,7 @@ public final class SharedClickGui {
         }
 
         float modeX = pickerX + pickerW + 6f;
-        float modeW = x + w - 10f - modeX;
+        float modeW = Math.min(72f, x + w - 10f - modeX);
         for (int i = 0; i < s.options.size(); i++) {
             String option = s.options.get(i);
             if (smallOption(ui, modeX, pickerY + i * 16f, modeW, 14f, option, option.equals(mode))) {
@@ -474,17 +476,17 @@ public final class SharedClickGui {
         }
 
         float hueY = pickerY + pickerH + 5f;
-        drawHue(ui, pickerX, hueY, w - 20f, 5f);
-        float hue = dragValue(ui, key + ".hue", pickerX, hueY, w - 20f, 5f, s.hue);
+        drawHue(ui, pickerX, hueY, pickerW, 5f);
+        float hue = dragValue(ui, key + ".hue", pickerX, hueY, pickerW, 5f, s.hue);
         if (Math.abs(hue - s.hue) > 1e-4f) {
             bridge.setColor(moduleId, s.id, hue, s.saturation, s.brightness, s.alpha, mode);
         }
 
         float alphaY = hueY + 9f;
-        drawChecker(ui, pickerX, alphaY, w - 20f, 5f);
+        drawChecker(ui, pickerX, alphaY, pickerW, 5f);
         int opaque = color | 0xFF000000;
-        ui.canvas().fillGradientH(pickerX, alphaY, w - 20f, 5f, opaque & 0x00FFFFFF, opaque);
-        float alpha = dragValue(ui, key + ".alpha", pickerX, alphaY, w - 20f, 5f, s.alpha);
+        ui.canvas().fillGradientH(pickerX, alphaY, pickerW, 5f, opaque & 0x00FFFFFF, opaque);
+        float alpha = dragValue(ui, key + ".alpha", pickerX, alphaY, pickerW, 5f, s.alpha);
         if (Math.abs(alpha - s.alpha) > 1e-4f) {
             bridge.setColor(moduleId, s.id, s.hue, s.saturation, s.brightness, alpha, mode);
         }
@@ -567,7 +569,7 @@ public final class SharedClickGui {
 
     private float settingHeight(String moduleId, ClickGuiBridge.SettingInfo s, float width) {
         if (s.kind == ClickGuiBridge.SettingInfo.COLOR && (moduleId + "." + s.id).equals(expandedColor)) {
-            return SETTING_ROW + Math.max(47f, s.options.size() * 16f - 2f) + 26f;
+            return SETTING_ROW + colorPickerHeight(colorPickerWidth(width, !s.options.isEmpty())) + 26f;
         }
         if (s.kind == ClickGuiBridge.SettingInfo.CHOICE && (moduleId + "." + s.id).equals(expandedChoice)) {
             int columns = width >= 260f ? 3 : 2;
@@ -578,6 +580,14 @@ public final class SharedClickGui {
             return SETTING_ROW * (s.items.size() + 1);
         }
         return SETTING_ROW;
+    }
+
+    static float colorPickerWidth(float width, boolean hasModes) {
+        return Math.min(COLOR_PICKER_MAX_W, Math.max(72f, width - (hasModes ? 82f : 20f)));
+    }
+
+    static float colorPickerHeight(float width) {
+        return Math.min(COLOR_PICKER_MAX_H, Math.max(48f, width * 0.5f));
     }
 
     private boolean groupCollapsed(String moduleId, ClickGuiBridge.GroupInfo group) {

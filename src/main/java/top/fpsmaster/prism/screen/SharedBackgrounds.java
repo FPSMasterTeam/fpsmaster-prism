@@ -78,7 +78,6 @@ public final class SharedBackgrounds {
         boolean selected = isSelected(bridge, id);
         boolean hover = ui.hovered(x, y, w, CARD_H);
         int stroke = selected ? ui.theme().accent() : (hover ? ui.theme().strokeStrong() : ui.theme().stroke());
-        ui.canvas().fillRoundRect(x - 0.5f, y - 0.5f, w + 1f, CARD_H + 1f, Metrics.CARD_RADIUS + 1f, stroke);
         ui.canvas().fillRoundRect(x, y, w, CARD_H, Metrics.CARD_RADIUS, Argb.rgb(22, 22, 25));
         bridge.paintPreview(ui, id, x + 1f, y + 1f, w - 2f, CARD_H - 2f);
         float labelH = 13f;
@@ -92,6 +91,8 @@ public final class SharedBackgrounds {
             ui.canvas().fillRoundRect(ckX, ckY, 8f, 8f, 4f, ui.theme().accent());
             GlyphIcons.draw(ui, "check", ckX + 1.5f, ckY + 1.5f, 5f, 0xFFFFFFFF);
         }
+        ui.canvas().strokeRoundRect(x + 0.5f, y + 0.5f, w - 1f, CARD_H - 1f,
+                Metrics.CARD_RADIUS - 0.5f, 0.75f, stroke);
         if (ui.clicked(x, y, w, CARD_H)) {
             bridge.select(id);
         }
