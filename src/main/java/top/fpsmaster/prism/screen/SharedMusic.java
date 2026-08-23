@@ -27,6 +27,7 @@ public final class SharedMusic {
     private boolean discoverRequested;
     private boolean loginOpen;
     private boolean immersiveLyrics;
+    private boolean settingsOpen;
     private float lyricsOpenT;
     private long lastNanos;
 
@@ -44,6 +45,10 @@ public final class SharedMusic {
     public boolean cancelOverlay() {
         if (immersiveLyrics || lyricsOpenT > 0f) {
             immersiveLyrics = false;
+            return true;
+        }
+        if (settingsOpen) {
+            settingsOpen = false;
             return true;
         }
         if (!loginOpen) {
@@ -98,9 +103,22 @@ public final class SharedMusic {
             return true;
         }
 
+        float settingsX = clX - 21f;
+        boolean settingsHover = ui.hovered(settingsX, clY, clS, clS);
+        Chrome.ghostButton(ui, settingsX, clY, clS, clS, settingsHover);
+        GlyphIcons.draw(ui, "sliders", settingsX + 4f, clY + 4f, 8f,
+                settingsHover || settingsOpen ? ui.theme().accent() : ui.theme().textSecondary());
+        if (ui.clicked(settingsX, clY, clS, clS)) {
+            settingsOpen = !settingsOpen;
+        }
+
         float bx = px + NOW_W;
         float bw = pw - NOW_W;
-        drawHead(ui, bridge, bx, py, clX);
+        if (settingsOpen) {
+            drawSettings(ui, bridge, bx, py, bw, ph);
+            return false;
+        }
+        drawHead(ui, bridge, bx, py, settingsX);
         drawToolbar(ui, bridge, bx, py + 34f, bw);
         float contentX = bx + 14f;
         float contentW = bw - 24f;
@@ -183,6 +201,61 @@ public final class SharedMusic {
         Chrome.ghostButton(ui, x, cy - bs / 2f, bs, bs, hover);
         GlyphIcons.draw(ui, icon, x + (bs - 8f) / 2f, cy - 4f, 8f,
                 accent ? ui.theme().accent() : (hover ? ui.theme().textPrimary() : ui.theme().textSecondary()));
+    }
+
+    private void drawSettings(UiFrame ui, MusicBridge bridge, float x, float y, float w, float h) {
+        FontBold.draw(ui, 16, "音乐设置", x + 14f, y + 10f, ui.theme().textPrimary());
+        ui.canvas().drawString(ui.font(11), "歌词显示", x + 14f, y + 22f, ui.theme().textSecondary());
+
+        float rowX = x + 14f;
+        float rowW = w - 28f;
+        float rowY = y + 44f;
+        settingToggle(ui, bridge, "桌面歌词", rowX, rowY, rowW, bridge.lyricsHudEnabled(), 0);
+        rowY += 30f;
+
+        settingSlider(ui, bridge, "歌词字号", Math.round(bridge.lyricFontSize()) + " px",
+                rowX, rowY, rowW, (bridge.lyricFontSize() - 10f) / 20f, 0);
+        rowY += 30f;
+        settingSlider(ui, bridge, "显示行数", bridge.lyricLines() + " 行",
+                rowX, rowY, rowW, (bridge.lyricLines() - 1f) / 4f, 1);
+        rowY += 30f;
+
+        settingToggle(ui, bridge, "显示翻译", rowX, rowY, rowW, bridge.lyricTranslation(), 1);
+        rowY += 30f;
+        settingToggle(ui, bridge, "平滑滚动", rowX, rowY, rowW, bridge.lyricScroll(), 2);
+        rowY += 30f;
+        settingToggle(ui, bridge, "歌词背景", rowX, rowY, rowW, bridge.lyricBackground(), 3);
+    }
+
+    private void settingToggle(UiFrame ui, MusicBridge bridge, String label, float x, float y, float w,
+                               boolean value, int setting) {
+        ui.canvas().fillRoundRect(x, y, w, 24f, 6f, ui.theme().layer());
+        ui.canvas().drawString(ui.font(12), label, x + 8f, Chrome.textY(y, 24f, ui.font(12)),
+                ui.theme().textPrimary());
+        float sx = x + w - Metrics.SWITCH_W - 8f;
+        boolean next = Chrome.toggle(ui, sx, y + (24f - Metrics.SWITCH_H) / 2f, value);
+        if (next == value) return;
+        if (setting == 0) bridge.setLyricsHudEnabled(next);
+        else if (setting == 1) bridge.setLyricTranslation(next);
+        else if (setting == 2) bridge.setLyricScroll(next);
+        else bridge.setLyricBackground(next);
+    }
+
+    private void settingSlider(UiFrame ui, MusicBridge bridge, String label, String value, float x, float y,
+                               float w, float position, int setting) {
+        ui.canvas().fillRoundRect(x, y, w, 24f, 6f, ui.theme().layer());
+        ui.canvas().drawString(ui.font(12), label, x + 8f, Chrome.textY(y, 24f, ui.font(12)),
+                ui.theme().textPrimary());
+        float valueW = ui.font(11).measure(value);
+        ui.canvas().drawString(ui.font(11), value, x + w - 8f - valueW,
+                Chrome.textY(y, 24f, ui.font(11)), ui.theme().textSecondary());
+        float sliderX = x + 76f;
+        float sliderW = w - 126f;
+        float next = Chrome.slider(ui, setting == 0 ? "music.lyric.font" : "music.lyric.lines",
+                sliderX, y + 6f, sliderW, position);
+        if (Math.abs(next - position) < 0.004f) return;
+        if (setting == 0) bridge.setLyricFontSize(10f + Math.round(next * 20f));
+        else bridge.setLyricLines(1 + Math.round(next * 4f));
     }
 
     private void drawHead(UiFrame ui, MusicBridge bridge, float x, float y, float closeX) {

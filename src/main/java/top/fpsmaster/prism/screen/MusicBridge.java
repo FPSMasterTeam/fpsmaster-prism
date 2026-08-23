@@ -104,6 +104,41 @@ public interface MusicBridge {
     default void setLyricsHudEnabled(boolean enabled) {
     }
 
+    default float lyricFontSize() {
+        return 18f;
+    }
+
+    default void setLyricFontSize(float size) {
+    }
+
+    default int lyricLines() {
+        return 2;
+    }
+
+    default void setLyricLines(int lines) {
+    }
+
+    default boolean lyricTranslation() {
+        return true;
+    }
+
+    default void setLyricTranslation(boolean enabled) {
+    }
+
+    default boolean lyricScroll() {
+        return true;
+    }
+
+    default void setLyricScroll(boolean enabled) {
+    }
+
+    default boolean lyricBackground() {
+        return true;
+    }
+
+    default void setLyricBackground(boolean enabled) {
+    }
+
     final class TrackRow {
         public final String name;
         public final String artists;
