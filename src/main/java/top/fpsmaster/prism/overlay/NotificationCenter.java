@@ -14,20 +14,24 @@ public final class NotificationCenter {
         INFO, SUCCESS, WARNING, ERROR
     }
 
-    private static final float HEIGHT = 31f;
-    private static final float GAP = 6f;
+    private static final float HEIGHT = 25f;
+    private static final float GAP = 4f;
+    private static final int MAX_VISIBLE = 3;
     private final CopyOnWriteArrayList<Entry> entries = new CopyOnWriteArrayList<Entry>();
 
     public void add(String title, String description, Type type, float durationSeconds) {
         long now = System.nanoTime();
         long duration = (long) (Math.max(0.3f, durationSeconds) * 1_000_000_000L);
+        while (entries.size() >= MAX_VISIBLE) {
+            entries.remove(0);
+        }
         entries.add(new Entry(title, description, type == null ? Type.INFO : type, now, duration));
     }
 
     public void paint(UiFrame ui) {
         long now = ui.host().nowNanos();
-        float y = 10f;
-        float maxWidth = Math.max(100f, Math.min(220f, ui.host().width() - 20f));
+        float y = 8f;
+        float maxWidth = Math.max(96f, Math.min(180f, ui.host().width() - 16f));
         for (Entry entry : entries) {
             float age = (now - entry.createdAt) / 1_000_000_000f;
             float lifetime = entry.durationNanos / 1_000_000_000f;
@@ -42,27 +46,28 @@ public final class NotificationCenter {
                 continue;
             }
 
-            FontHandle titleFont = ui.font(13);
-            FontHandle bodyFont = ui.font(11);
-            float natural = Math.max(titleFont.measure(entry.title), bodyFont.measure(entry.description)) + 31f;
-            float width = Math.max(126f, Math.min(maxWidth, natural));
-            float x = ui.host().width() - 10f - width * entry.visibility;
+            FontHandle titleFont = ui.font(12);
+            FontHandle bodyFont = ui.font(10);
+            float natural = Math.max(titleFont.measure(entry.title), bodyFont.measure(entry.description)) + 24f;
+            float width = Math.max(108f, Math.min(maxWidth, natural));
+            float x = ui.host().width() - 8f - width * entry.visibility;
             int tone = color(ui, entry.type);
 
             ui.canvas().pushAlpha(Anim.cssEase(entry.visibility));
-            ui.canvas().fillRoundRect(x, entry.y, width, HEIGHT, 6f, ui.theme().opaquePanelBase());
+            ui.canvas().fillRoundRect(x, entry.y, width, HEIGHT, 5f, ui.theme().opaquePanelBase());
             ui.canvas().strokeRoundRect(x + 0.5f, entry.y + 0.5f, width - 1f, HEIGHT - 1f,
-                    5.5f, 1f, ui.theme().strokeStrong());
-            ui.canvas().fillRoundRect(x + 5f, entry.y + 7f, 3f, HEIGHT - 14f, 1.5f, tone);
-            ui.canvas().pushClip(x + 13f, entry.y + 2f, width - 19f, HEIGHT - 4f);
-            ui.canvas().drawString(titleFont, ellipsize(titleFont, entry.title, width - 22f),
-                    x + 13f, entry.y + 4f, ui.theme().textPrimary());
-            ui.canvas().drawString(bodyFont, ellipsize(bodyFont, entry.description, width - 22f),
-                    x + 13f, entry.y + 17f, ui.theme().textSecondary());
+                    4.5f, 1f, ui.theme().stroke());
+            ui.canvas().fillCircle(x + 8f, entry.y + HEIGHT * 0.5f, 2f, tone);
+            ui.canvas().pushClip(x + 14f, entry.y + 2f, width - 19f, HEIGHT - 4f);
+            ui.canvas().drawString(titleFont, ellipsize(titleFont, entry.title, width - 21f),
+                    x + 14f, entry.y + 3f, ui.theme().textPrimary());
+            ui.canvas().drawString(bodyFont, ellipsize(bodyFont, entry.description, width - 21f),
+                    x + 14f, entry.y + 13f, ui.theme().textSecondary());
             ui.canvas().popClip();
             float progress = Math.max(0f, Math.min(1f, age / lifetime));
-            ui.canvas().fillRoundRect(x + 5f, entry.y + HEIGHT - 2f,
-                    Math.max(1f, (width - 10f) * (1f - progress)), 1f, 0.5f, Argb.withAlpha(tone, 150));
+            ui.canvas().fillRoundRect(x + 5f, entry.y + HEIGHT - 1.25f,
+                    Math.max(1f, (width - 10f) * (1f - progress)), 0.5f, 0.25f,
+                    Argb.withAlpha(tone, 120));
             ui.canvas().popAlpha();
             y += (HEIGHT + GAP) * entry.visibility;
         }
@@ -108,7 +113,7 @@ public final class NotificationCenter {
         final long durationNanos;
         long lastNanos;
         float visibility;
-        float y = 10f;
+        float y = 8f;
 
         Entry(String title, String description, Type type, long createdAt, long durationNanos) {
             this.title = title == null ? "" : title;
