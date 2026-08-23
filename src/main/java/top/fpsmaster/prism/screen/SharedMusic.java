@@ -147,11 +147,9 @@ public final class SharedMusic {
         float ctlCy = y + h - 42f;
         float bs = 18f;
         float ps = 24f;
-        if (bridge.hasLyrics()) {
-            iconCtl(ui, "lyrics", x + 16f, ctlCy, bs, immersiveLyrics);
-            if (ui.clicked(x + 16f, ctlCy - bs / 2f, bs, bs)) {
-                immersiveLyrics = true;
-            }
+        iconCtl(ui, "lyrics", x + 16f, ctlCy, bs, bridge.lyricsHudEnabled());
+        if (ui.clicked(x + 16f, ctlCy - bs / 2f, bs, bs)) {
+            bridge.setLyricsHudEnabled(!bridge.lyricsHudEnabled());
         }
         float rowW = bs * 2f + ps + 12f;
         float ix = x + (w - rowW) / 2f;
@@ -350,15 +348,10 @@ public final class SharedMusic {
         if (ui.clicked(backX, backY, 17f, 17f)) {
             immersiveLyrics = false;
         }
-        String title = ellipsize(ui.font(16), bridge.nowTitle(), w - 180f);
+        String title = ellipsize(ui.font(16), bridge.nowTitle(), w - 64f);
         FontBold.draw(ui, 16, title, x + 40f, y + 9f, ui.theme().textPrimary());
-        ui.canvas().drawString(ui.font(11), ellipsize(ui.font(11), bridge.nowArtist(), w - 180f),
+        ui.canvas().drawString(ui.font(11), ellipsize(ui.font(11), bridge.nowArtist(), w - 64f),
                 x + 40f, y + 21f, ui.theme().textSecondary());
-        String hud = bridge.lyricsHudEnabled() ? "HUD 已开启" : "显示在 HUD";
-        if (Chrome.button(ui, x + w - 82f, y + 9f, 70f, 17f, hud,
-                bridge.lyricsHudEnabled() ? Chrome.ButtonStyle.PRIMARY : Chrome.ButtonStyle.DEFAULT)) {
-            bridge.setLyricsHudEnabled(!bridge.lyricsHudEnabled());
-        }
         lyrics.drawImmersive(ui, bridge, x + 16f, y + 34f, w - 32f, h - 72f, dt);
         float barX = x + 42f;
         float barW = w - 84f;
