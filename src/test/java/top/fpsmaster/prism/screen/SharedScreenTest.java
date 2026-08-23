@@ -65,6 +65,21 @@ class SharedScreenTest {
     }
 
     @Test
+    void clickGuiKeepsCategoriesAboveFooterOnShortScreens() {
+        HeadlessHost host = new HeadlessHost(300, 220);
+        ClickBridge bridge = new ClickBridge();
+        bridge.showAllCategories = true;
+        SharedClickGui gui = new SharedClickGui("optimize");
+        host.input.setMouse(30, 116);
+        host.input.press(0, 30, 116);
+
+        gui.draw(new UiFrame(host, Theme.DARK), bridge);
+
+        assertEquals("optimize", gui.category);
+        assertTrue(bridge.cosmeticsOpened);
+    }
+
+    @Test
     void backgroundsDrawsTitle() {
         HeadlessHost host = new HeadlessHost(500, 320);
         SharedBackgrounds gui = new SharedBackgrounds();
@@ -193,6 +208,8 @@ class SharedScreenTest {
     private static final class ClickBridge implements ClickGuiBridge {
         final List<String> toggled = new ArrayList<String>();
         boolean withSettings;
+        boolean showAllCategories;
+        boolean cosmeticsOpened;
 
         public String i18n(String key) {
             return key;
@@ -210,6 +227,10 @@ class SharedScreenTest {
             List<String> ids = new ArrayList<String>();
             ids.add("optimize");
             ids.add("render");
+            if (showAllCategories) {
+                ids.add("utility");
+                ids.add("interface");
+            }
             return ids;
         }
 
@@ -262,6 +283,10 @@ class SharedScreenTest {
         }
 
         public void openProfiles() {
+        }
+
+        public void openCosmetics() {
+            cosmeticsOpened = true;
         }
     }
 

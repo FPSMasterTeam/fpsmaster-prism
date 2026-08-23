@@ -146,22 +146,27 @@ public final class SharedClickGui {
         float navX = x + 5.5f;
         float navW = Metrics.SIDEBAR - 11f;
         float my = y + 47f;
+        int footerItems = 5;
+        float footerY = y + height - 7f - (Metrics.NAV_ITEM + 1f) * footerItems;
+        float navStep = cats.isEmpty() ? Metrics.NAV_ITEM + 1f
+                : Math.min(Metrics.NAV_ITEM + 1f, (footerY - 5f - my) / cats.size());
+        float navHeight = Math.min(Metrics.NAV_ITEM, navStep - 1f);
         FontHandle navFont = ui.font(13);
         FontHandle countFont = ui.font(11);
         for (int i = 0; i < cats.size(); i++) {
             String id = cats.get(i);
             boolean selected = id.equals(category);
-            boolean hover = ui.hovered(navX, my, navW, Metrics.NAV_ITEM);
-            Chrome.navItem(ui, navX, my, navW, Metrics.NAV_ITEM, selected, hover);
+            boolean hover = ui.hovered(navX, my, navW, navHeight);
+            Chrome.navItem(ui, navX, my, navW, navHeight, selected, hover);
             int color = selected ? ui.theme().white() : ui.theme().textSecondary();
-            GlyphIcons.draw(ui, bridge.categoryIcon(id), navX + 6f, my + (Metrics.NAV_ITEM - 7f) / 2f, 7f, color);
+            GlyphIcons.draw(ui, bridge.categoryIcon(id), navX + 6f, my + (navHeight - 7f) / 2f, 7f, color);
             String n = String.valueOf(bridge.moduleCount(id));
             float countW = countFont.measure(n);
             String label = ellipsize(navFont, bridge.categoryLabel(id), navW - 17.5f - countW - 8f);
-            ui.canvas().drawString(navFont, label, navX + 17.5f, Chrome.textY(my, Metrics.NAV_ITEM, navFont), color);
+            ui.canvas().drawString(navFont, label, navX + 17.5f, Chrome.textY(my, navHeight, navFont), color);
             ui.canvas().drawString(countFont, n, navX + navW - 6f - countW,
-                    Chrome.textY(my, Metrics.NAV_ITEM, countFont), selected ? 0xB3FFFFFF : ui.theme().textDisabled());
-            if (ui.clicked(navX, my, navW, Metrics.NAV_ITEM)) {
+                    Chrome.textY(my, navHeight, countFont), selected ? 0xB3FFFFFF : ui.theme().textDisabled());
+            if (ui.clicked(navX, my, navW, navHeight)) {
                 if (!id.equals(category)) {
                     category = id;
                     expandedId = null;
@@ -171,11 +176,9 @@ public final class SharedClickGui {
                     categoryT = 0f;
                 }
             }
-            my += Metrics.NAV_ITEM + 1f;
+            my += navStep;
         }
 
-        int footerItems = 5;
-        float footerY = y + height - 7f - (Metrics.NAV_ITEM + 1f) * footerItems;
         Chrome.hairlineH(ui, x + 7f, footerY - 4f, Metrics.SIDEBAR - 14f);
         if (sideNav(ui, navX, footerY, navW, bridge.i18n("cosmetics.title"), "sparkles")) {
             bridge.openCosmetics();
