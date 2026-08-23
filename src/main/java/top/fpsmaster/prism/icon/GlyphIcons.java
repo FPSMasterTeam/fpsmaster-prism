@@ -48,6 +48,10 @@ public final class GlyphIcons {
             canvas.line(x + s * 0.35f, y + s * 0.18f, x + s * 0.35f, y + s * 0.72f, w, argb);
             canvas.line(x + s * 0.35f, y + s * 0.18f, x + s * 0.78f, y + s * 0.3f, w, argb);
             canvas.fillCircle(x + s * 0.32f, y + s * 0.78f, s * 0.12f, argb);
+        } else if ("lyrics".equals(name)) {
+            canvas.line(x + s * 0.18f, y + s * 0.28f, x + s * 0.82f, y + s * 0.28f, w, argb);
+            canvas.line(x + s * 0.18f, y + s * 0.5f, x + s * 0.68f, y + s * 0.5f, w, argb);
+            canvas.line(x + s * 0.18f, y + s * 0.72f, x + s * 0.76f, y + s * 0.72f, w, argb);
         } else if ("folder".equals(name)) {
             canvas.strokeRoundRect(x + s * 0.12f, y + s * 0.32f, s * 0.76f, s * 0.5f, 1.2f, w, argb);
             canvas.fillRect(x + s * 0.12f, y + s * 0.22f, s * 0.32f, s * 0.14f, argb);
