@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FPSMaster 饰品界面原型</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --panel: rgba(14, 14, 14, 0.96);
+      --surface: rgba(255, 255, 255, 0.045);
+      --surface-hover: rgba(255, 255, 255, 0.078);
+      --surface-active: rgba(255, 255, 255, 0.12);
+      --line: rgba(255, 255, 255, 0.08);
+      --line-strong: rgba(255, 255, 255, 0.16);
+      --text: #f2f2f2;
+      --text-secondary: #9a9a9a;
+      --text-disabled: #5c5c5c;
+      --accent: #5965f1;
+      --accent-hover: #6b76ff;
+      --accent-soft: rgba(89, 101, 241, 0.16);
+      --accent-border: rgba(89, 101, 241, 0.55);
+      --ok: #3ecf8e;
+      --panel-radius: 18px;
+      --card-radius: 12px;
+      --control-radius: 10px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+      display: grid;
+      margin: 0;
+      min-width: 1024px;
+      overflow: hidden;
+      place-items: center;
+      color: var(--text);
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 13px;
+      letter-spacing: 0;
+      background: #080a0b url("/FPSMaster-Nova/src/main/resources/assets/fpsmaster/textures/gui/title/background/panorama_1_0.png") center / cover no-repeat;
+    }
+
+    body::before {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.58);
+      content: "";
+    }
+
+    button, input { font: inherit; letter-spacing: 0; }
+
+    button {
+      border: 0;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    button:focus-visible, input:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .screen {
+      position: relative;
+      display: grid;
+      grid-template-rows: 58px minmax(0, 1fr);
+      width: min(1320px, calc(100vw - 56px));
+      height: min(760px, calc(100vh - 56px));
+      margin: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--panel-radius);
+      background: var(--panel);
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(18px);
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .icon-button {
+      display: grid;
+      flex: 0 0 auto;
+      width: 32px;
+      height: 32px;
+      place-items: center;
+      border-radius: 9px;
+      background: transparent;
+    }
+
+    .icon-button:hover { background: var(--surface-hover); }
+    .icon-button img { width: 16px; height: 16px; opacity: 0.72; }
+    .icon-button:hover img { opacity: 1; }
+
+    .title-block { min-width: 132px; }
+    .title-block h1 { margin: 0; font-size: 16px; font-weight: 650; }
+    .title-block p { margin: 2px 0 0; color: var(--text-disabled); font-size: 10px; }
+
+    .scope-tabs {
+      display: flex;
+      align-self: stretch;
+      gap: 24px;
+      margin-left: 12px;
+    }
+
+    .scope-tab {
+      position: relative;
+      padding: 0 2px;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .scope-tab:hover { color: var(--text); }
+    .scope-tab.active { color: var(--text); }
+
+    .scope-tab.active::after {
+      position: absolute;
+      right: 0;
+      bottom: -1px;
+      left: 0;
+      height: 2px;
+      border-radius: 2px 2px 0 0;
+      background: var(--accent);
+      content: "";
+    }
+
+    .header-spacer { flex: 1; }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(380px, 39%);
+      min-height: 0;
+    }
+
+    .catalog {
+      display: grid;
+      grid-template-rows: 58px minmax(0, 1fr);
+      min-width: 0;
+      min-height: 0;
+      padding: 0 18px 18px;
+    }
+
+    .catalog-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .catalog-toolbar h2 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 3px;
+      padding: 3px;
+      border-radius: 9px;
+      background: var(--surface);
+    }
+
+    .filter-button {
+      height: 27px;
+      padding: 0 13px;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .filter-button:hover { color: var(--text); }
+    .filter-button.active { background: var(--surface-active); color: var(--text); }
+
+    .item-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      align-content: start;
+      gap: 10px;
+      min-height: 0;
+      padding-right: 5px;
+      overflow-y: auto;
+      scrollbar-color: var(--line-strong) transparent;
+      scrollbar-width: thin;
+    }
+
+    .item-card {
+      position: relative;
+      display: grid;
+      grid-template-rows: minmax(112px, 1fr) 48px;
+      min-width: 0;
+      min-height: 168px;
+      overflow: hidden;
+      border: 1px solid transparent;
+      border-radius: var(--card-radius);
+      background: var(--surface);
+      text-align: left;
+      transition: background 120ms ease, border-color 120ms ease;
+    }
+
+    .item-card:hover { background: var(--surface-hover); }
+    .item-card.active { border-color: var(--accent-border); background: var(--accent-soft); }
+
+    .item-visual {
+      position: relative;
+      min-width: 0;
+      overflow: hidden;
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+      background-size: 18px 18px;
+    }
+
+    .item-visual canvas { display: block; width: 100%; height: 100%; }
+
+    .equipped-mark {
+      position: absolute;
+      top: 9px;
+      right: 9px;
+      z-index: 2;
+      display: none;
+      width: 18px;
+      height: 18px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .item-card.equipped .equipped-mark { display: grid; }
+
+    .item-copy {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      padding: 0 11px;
+      border-top: 1px solid var(--line);
+    }
+
+    .item-name {
+      overflow: hidden;
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .item-meta { color: var(--text-disabled); font-size: 9px; white-space: nowrap; }
+    .item-meta.owned { color: var(--ok); }
+
+    .empty-state {
+      display: none;
+      place-items: center;
+      min-height: 240px;
+      color: var(--text-disabled);
+      font-size: 11px;
+    }
+
+    .empty-state.visible { display: grid; }
+
+    .preview {
+      display: grid;
+      grid-template-rows: 58px minmax(0, 1fr) auto;
+      min-width: 0;
+      min-height: 0;
+      border-left: 1px solid var(--line);
+    }
+
+    .preview-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 18px;
+    }
+
+    .preview-title { min-width: 0; }
+    .preview-title h2 {
+      overflow: hidden;
+      margin: 0;
+      font-size: 14px;
+      font-weight: 650;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .preview-title p { margin: 3px 0 0; color: var(--text-secondary); font-size: 10px; }
+    .preview-head .icon-button { margin-left: auto; }
+
+    .stage {
+      position: relative;
+      min-height: 0;
+      overflow: hidden;
+      background-color: rgba(255, 255, 255, 0.018);
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    .stage::after {
+      position: absolute;
+      right: 14%;
+      bottom: 9%;
+      left: 14%;
+      height: 1px;
+      background: var(--line);
+      content: "";
+    }
+
+    .stage canvas { position: relative; z-index: 1; display: block; width: 100%; height: 100%; }
+
+    .preview-footer {
+      padding: 14px 18px 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .settings-row {
+      display: flex;
+      align-items: center;
+      min-height: 28px;
+      margin-bottom: 12px;
+    }
+
+    .setting-label { color: var(--text-secondary); font-size: 10px; }
+
+    .toggle {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      margin-left: 10px;
+    }
+
+    .toggle input { position: absolute; opacity: 0; }
+
+    .toggle span {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: var(--surface-active);
+      transition: background 120ms ease;
+    }
+
+    .toggle span::after {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #a0a0a0;
+      content: "";
+      transition: transform 120ms ease, background 120ms ease;
+    }
+
+    .toggle input:checked + span { background: var(--accent); }
+    .toggle input:checked + span::after { transform: translateX(16px); background: #fff; }
+
+    .scale-setting {
+      display: none;
+      align-items: center;
+      gap: 9px;
+      margin-left: auto;
+      color: var(--text-secondary);
+      font-size: 10px;
+    }
+
+    .scale-setting.visible { display: flex; }
+
+    .scale-setting input {
+      width: 88px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .action-row { display: flex; align-items: center; gap: 14px; }
+
+    .selection-state {
+      min-width: 0;
+      flex: 1;
+      color: var(--text-disabled);
+      font-size: 10px;
+    }
+
+    .primary-button {
+      min-width: 132px;
+      height: 36px;
+      padding: 0 18px;
+      border-radius: var(--control-radius);
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .primary-button:hover { background: var(--accent-hover); }
+    .primary-button.equipped { border: 1px solid var(--line-strong); background: var(--surface); color: var(--text-secondary); }
+
+    .toast {
+      position: fixed;
+      right: 28px;
+      bottom: 28px;
+      z-index: 20;
+      padding: 9px 12px;
+      border: 1px solid var(--line-strong);
+      border-radius: 9px;
+      background: #171717;
+      color: var(--text);
+      opacity: 0;
+      transform: translateY(6px);
+      pointer-events: none;
+      transition: opacity 130ms ease, transform 130ms ease;
+    }
+
+    .toast.visible { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 1180px) {
+      .screen { width: calc(100vw - 36px); height: calc(100vh - 36px); }
+      .content { grid-template-columns: minmax(0, 1fr) 380px; }
+      .item-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: 0.001ms !important; }
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "skinview-utils": "/minecraft-cosmetic-studio/node_modules/skinview-utils/build/index.js",
+        "three": "/minecraft-cosmetic-studio/node_modules/three/build/three.module.js",
+        "three/": "/minecraft-cosmetic-studio/node_modules/three/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main class="screen">
+    <header class="header">
+      <button class="icon-button" type="button" aria-label="返回">
+        <img src="/FPSMaster-Nova/src/main/resources/assets/fpsmaster/textures/gui/icons/24/back.png" alt="" />
+      </button>
+      <div class="title-block">
+        <h1>饰品</h1>
+        <p>披风与背饰</p>
+      </div>
+      <nav class="scope-tabs" aria-label="饰品范围">
+        <button class="scope-tab active" type="button" data-scope="store">商店</button>
+        <button class="scope-tab" type="button" data-scope="owned">我的饰品</button>
+      </nav>
+      <span class="header-spacer"></span>
+    </header>
+
+    <div class="content">
+      <section class="catalog" aria-labelledby="catalog-title">
+        <header class="catalog-toolbar">
+          <h2 id="catalog-title">全部饰品</h2>
+          <div class="filter-group" aria-label="饰品类型">
+            <button class="filter-button active" type="button" data-category="all">全部</button>
+            <button class="filter-button" type="button" data-category="cape">披风</button>
+            <button class="filter-button" type="button" data-category="wings">翅膀</button>
+          </div>
+        </header>
+        <div class="item-grid" id="item-grid"></div>
+        <div class="empty-state" id="empty-state">暂无饰品</div>
+      </section>
+
+      <aside class="preview" aria-labelledby="preview-name">
+        <header class="preview-head">
+          <div class="preview-title">
+            <h2 id="preview-name">朱潮山海披风</h2>
+            <p id="preview-meta">披风 · 998 金币</p>
+          </div>
+          <button class="icon-button" id="reset-view" type="button" aria-label="重置视角" title="重置视角">
+            <img src="/FPSMaster-Nova/src/main/resources/assets/fpsmaster/textures/gui/icons/24/reset.png" alt="" />
+          </button>
+        </header>
+
+        <div class="stage" id="stage"></div>
+
+        <footer class="preview-footer">
+          <div class="settings-row">
+            <span class="setting-label" id="setting-label">披风动画</span>
+            <label class="toggle" title="切换当前设置">
+              <input id="setting-toggle" type="checkbox" checked /><span></span>
+            </label>
+            <label class="scale-setting" id="scale-setting">
+              <span>大小</span>
+              <input id="wing-scale" type="range" min="70" max="130" value="100" />
+            </label>
+          </div>
+          <div class="action-row">
+            <span class="selection-state" id="selection-state">正在试穿</span>
+            <button class="primary-button" id="primary-action" type="button">购买 · 998 金币</button>
+          </div>
+        </footer>
+      </aside>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script type="module">
+    import { IdleAnimation, SkinViewer } from "/minecraft-cosmetic-studio/node_modules/skinview3d/libs/skinview3d.js";
+    import {
+      BufferGeometry,
+      DoubleSide,
+      Float32BufferAttribute,
+      Group,
+      Matrix4,
+      Mesh,
+      MeshStandardMaterial,
+      NearestFilter,
+      SRGBColorSpace,
+      TextureLoader,
+    } from "three";
+
+    const ROOT = "/minecraft-cosmetic-studio";
+    const assets = {
+      steve: `${ROOT}/workspace/assets/original-steve.png`,
+      vermilion: `${ROOT}/output/pixel-demo-atlases/pixel-vermilion-tide.png`,
+      celadon: `${ROOT}/output/atlases-v2/image2-celadon-mountains.png`,
+      indigo: `${ROOT}/output/atlases-v2/image2-indigo-moon.png`,
+      dragon: `${ROOT}/output/atlases-v2/original-dragon-wings.png`,
+      aurora: `${ROOT}/output/atlases-v2/image2-aurora-wings.png`,
+      jade: `${ROOT}/output/atlases-v2/image2-jade-wings.png`,
+    };
+
+    const items = [
+      { id: "vermilion", type: "cape", name: "朱潮山海披风", price: 998, owned: false, asset: assets.vermilion },
+      { id: "dragon", type: "wings", name: "默认龙翼", price: 0, owned: true, builtin: true, asset: assets.dragon },
+      { id: "celadon", type: "cape", name: "青绿千里披风", price: 880, owned: true, asset: assets.celadon },
+      { id: "aurora", type: "wings", name: "极光霜翼", price: 1280, owned: false, asset: assets.aurora },
+      { id: "indigo", type: "cape", name: "靛月行舟披风", price: 760, owned: false, asset: assets.indigo },
+      { id: "jade", type: "wings", name: "青羽鎏金翼", price: 1180, owned: false, asset: assets.jade },
+    ];
+
+    const state = {
+      scope: "store",
+      category: "all",
+      selectedId: "vermilion",
+      equipped: { cape: null, wings: "dragon" },
+      capeAnimation: true,
+      wingsVisible: true,
+      wingScale: 1,
+    };
+
+    const grid = document.querySelector("#item-grid");
+    const emptyState = document.querySelector("#empty-state");
+    const stage = document.querySelector("#stage");
+    const toast = document.querySelector("#toast");
+    const textureLoader = new TextureLoader();
+    const poseMatrix = new Matrix4();
+    const thumbnailViewers = [];
+    let stageViewer = null;
+    let stageWings = null;
+    let stageWingTexture = null;
+    let toastTimer = 0;
+
+    function selectedItem() {
+      return items.find((item) => item.id === state.selectedId) ?? items[0];
+    }
+
+    function itemById(id) {
+      return items.find((item) => item.id === id) ?? null;
+    }
+
+    function visibleItems() {
+      return items.filter((item) => {
+        if (state.scope === "owned" && !item.owned) return false;
+        return state.category === "all" || item.type === state.category;
+      });
+    }
+
+    function typeLabel(type) {
+      return type === "cape" ? "披风" : "翅膀";
+    }
+
+    function priceLabel(item) {
+      return item.price === 0 ? "免费" : `${item.price.toLocaleString("zh-CN")} 金币`;
+    }
+
+    function showToast(message) {
+      window.clearTimeout(toastTimer);
+      toast.textContent = message;
+      toast.classList.add("visible");
+      toastTimer = window.setTimeout(() => toast.classList.remove("visible"), 1500);
+    }
+
+    function ensureVisibleSelection() {
+      const visible = visibleItems();
+      if (visible.length > 0 && !visible.some((item) => item.id === state.selectedId)) state.selectedId = visible[0].id;
+    }
+
+    function renderCards() {
+      for (const viewer of thumbnailViewers.splice(0)) viewer.dispose();
+      grid.replaceChildren();
+      const visible = visibleItems();
+      emptyState.classList.toggle("visible", visible.length === 0);
+
+      for (const item of visible) {
+        const equipped = state.equipped[item.type] === item.id;
+        const card = document.createElement("button");
+        card.type = "button";
+        card.className = `item-card${item.id === state.selectedId ? " active" : ""}${equipped ? " equipped" : ""}`;
+        card.dataset.id = item.id;
+        card.innerHTML = `
+          <div class="item-visual"><span class="equipped-mark">✓</span><canvas aria-hidden="true"></canvas></div>
+          <div class="item-copy">
+            <span class="item-name">${item.name}</span>
+            <span class="item-meta${item.owned ? " owned" : ""}">${item.owned ? (equipped ? "穿戴中" : "已拥有") : priceLabel(item)}</span>
+          </div>`;
+        card.addEventListener("click", () => {
+          state.selectedId = item.id;
+          render();
+        });
+        grid.append(card);
+        createThumbnail(card.querySelector("canvas"), item).then((viewer) => thumbnailViewers.push(viewer));
+      }
+    }
+
+    async function createThumbnail(canvas, item) {
+      const host = canvas.parentElement;
+      const viewer = new SkinViewer({
+        canvas,
+        width: Math.max(140, host.clientWidth),
+        height: Math.max(112, host.clientHeight),
+        fov: 38,
+        zoom: item.type === "cape" ? 1.72 : 1.15,
+        pixelRatio: 1,
+        enableControls: false,
+        renderPaused: true,
+      });
+      viewer.globalLight.intensity = 1.85;
+      viewer.cameraLight.intensity = 1.45;
+      viewer.playerWrapper.rotation.y = Math.PI - 0.18;
+      if (item.type === "cape") {
+        await viewer.loadCape(item.asset, { backEquipment: "cape" });
+      } else {
+        const texture = await textureLoader.loadAsync(item.asset);
+        prepareTexture(texture);
+        viewer.playerObject.add(createDragonWings(texture));
+      }
+      viewer.render();
+      return viewer;
+    }
+
+    async function createStage() {
+      const canvas = document.createElement("canvas");
+      stage.prepend(canvas);
+      stageViewer = new SkinViewer({
+        canvas,
+        width: stage.clientWidth,
+        height: stage.clientHeight,
+        skin: assets.steve,
+        model: "default",
+        fov: 38,
+        zoom: 0.58,
+        enableControls: true,
+      });
+      stageViewer.globalLight.intensity = 1.9;
+      stageViewer.cameraLight.intensity = 1.5;
+      stageViewer.playerWrapper.rotation.y = Math.PI - 0.34;
+      stageViewer.controls.enablePan = false;
+      stageViewer.controls.target.set(0, 0, 0);
+      stageViewer.controls.update();
+      stageViewer.animation = new IdleAnimation();
+      new ResizeObserver(() => stageViewer?.setSize(stage.clientWidth, stage.clientHeight)).observe(stage);
+      await updateStageEquipment();
+    }
+
+    async function updateStageEquipment() {
+      if (!stageViewer) return;
+      const selected = selectedItem();
+      const cape = selected.type === "cape" ? selected : itemById(state.equipped.cape);
+      const wings = selected.type === "wings" ? selected : itemById(state.equipped.wings);
+
+      disposeDragonWings(stageWings);
+      stageWings = null;
+      stageWingTexture?.dispose();
+      stageWingTexture = null;
+      stageViewer.resetCape();
+
+      if (cape) await stageViewer.loadCape(cape.asset, { backEquipment: "cape" });
+      if (state.wingsVisible && wings) {
+        const texture = await textureLoader.loadAsync(wings.asset);
+        prepareTexture(texture);
+        stageWings = createDragonWings(texture);
+        stageWings.scale.setScalar(state.wingScale);
+        stageWingTexture = texture;
+        stageViewer.playerObject.add(stageWings);
+      }
+    }
+
+    function renderHeader() {
+      document.querySelectorAll("[data-scope]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.scope === state.scope);
+      });
+      document.querySelectorAll("[data-category]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.category === state.category);
+      });
+      const category = state.category === "all" ? "全部" : typeLabel(state.category);
+      document.querySelector("#catalog-title").textContent = `${category}饰品`;
+    }
+
+    function renderDetail() {
+      const item = selectedItem();
+      const equipped = state.equipped[item.type] === item.id;
+      document.querySelector("#preview-name").textContent = item.name;
+      document.querySelector("#preview-meta").textContent = `${typeLabel(item.type)} · ${priceLabel(item)}`;
+      document.querySelector("#selection-state").textContent = equipped ? "当前穿戴" : item.owned ? "已拥有" : "正在试穿";
+
+      const settingToggle = document.querySelector("#setting-toggle");
+      const scaleSetting = document.querySelector("#scale-setting");
+      document.querySelector("#setting-label").textContent = item.type === "cape" ? "披风动画" : "显示翅膀";
+      settingToggle.checked = item.type === "cape" ? state.capeAnimation : state.wingsVisible;
+      scaleSetting.classList.toggle("visible", item.type === "wings");
+
+      const action = document.querySelector("#primary-action");
+      action.classList.toggle("equipped", equipped);
+      action.textContent = equipped ? "卸下" : item.owned ? "穿戴" : `购买 · ${priceLabel(item)}`;
+    }
+
+    function render() {
+      ensureVisibleSelection();
+      renderHeader();
+      renderCards();
+      renderDetail();
+      updateStageEquipment().catch(() => showToast("3D 预览加载失败"));
+    }
+
+    document.querySelectorAll("[data-scope]").forEach((button) => button.addEventListener("click", () => {
+      state.scope = button.dataset.scope;
+      render();
+    }));
+
+    document.querySelectorAll("[data-category]").forEach((button) => button.addEventListener("click", () => {
+      state.category = button.dataset.category;
+      render();
+    }));
+
+    document.querySelector("#primary-action").addEventListener("click", () => {
+      const item = selectedItem();
+      if (state.equipped[item.type] === item.id) {
+        state.equipped[item.type] = null;
+        showToast(`已卸下 ${item.name}`);
+      } else {
+        item.owned = true;
+        state.equipped[item.type] = item.id;
+        showToast(`已穿戴 ${item.name}`);
+      }
+      render();
+    });
+
+    document.querySelector("#setting-toggle").addEventListener("change", (event) => {
+      if (selectedItem().type === "cape") {
+        state.capeAnimation = event.target.checked;
+      } else {
+        state.wingsVisible = event.target.checked;
+        updateStageEquipment();
+      }
+    });
+
+    document.querySelector("#wing-scale").addEventListener("input", (event) => {
+      state.wingScale = Number(event.target.value) / 100;
+      stageWings?.scale.setScalar(state.wingScale);
+    });
+
+    document.querySelector("#reset-view").addEventListener("click", () => {
+      stageViewer.playerWrapper.rotation.y = Math.PI - 0.34;
+      stageViewer.resetCameraPose();
+      stageViewer.controls.target.set(0, 0, 0);
+      stageViewer.controls.update();
+    });
+
+    function createDragonWings(texture) {
+      const root = new Group();
+      root.name = "dragon-wings";
+      root.position.set(0, 8, -3.2);
+      const material = new MeshStandardMaterial({
+        map: texture,
+        transparent: true,
+        alphaTest: 0.01,
+        side: DoubleSide,
+        roughness: 0.78,
+      });
+      for (const mirror of [1, -1]) {
+        const wing = matrixGroup();
+        wing.name = mirror === 1 ? "left-wing" : "right-wing";
+        wing.userData.mirror = mirror;
+        wing.add(
+          createBone(mirror, 10, 2, 2, -1, -1, [0, 0, 10, 2], material),
+          createMembrane(mirror, [0, 8, 10, 18], material),
+        );
+        const tip = matrixGroup();
+        tip.name = "wing-tip";
+        tip.add(
+          createBone(mirror, 10, 1, 1, -0.5, -0.5, [0, 5, 10, 6], material),
+          createMembrane(mirror, [0, 18, 10, 28], material),
+        );
+        wing.add(tip);
+        root.add(wing);
+      }
+      updateDragonWings(root, 0);
+      return root;
+    }
+
+    function updateDragonWings(group, phase) {
+      if (!group) return;
+      for (const wing of group.children) {
+        const mirror = wing.userData.mirror;
+        wing.matrix
+          .makeTranslation(-2 * mirror, 0, 0)
+          .multiply(poseMatrix.makeRotationZ(-degrees(20) * mirror))
+          .multiply(poseMatrix.makeRotationY(-(degrees(20) + Math.sin(phase) * 0.4) * mirror))
+          .multiply(poseMatrix.makeRotationX(degrees(-80) - Math.cos(phase) * 0.2));
+        wing.matrixWorldNeedsUpdate = true;
+        const tip = wing.getObjectByName("wing-tip");
+        tip.matrix
+          .makeTranslation(-10 * mirror, 0, 0)
+          .multiply(poseMatrix.makeRotationZ(((Math.sin(phase + 2) + 0.5) * 0.75) * mirror));
+        tip.matrixWorldNeedsUpdate = true;
+      }
+    }
+
+    function createBone(mirror, width, height, depth, y, z, uv, material) {
+      const x = -width * mirror;
+      const x2 = 0;
+      const y2 = y + height;
+      const z2 = z + depth;
+      const faces = [
+        [[x, y, z2], [x2, y, z2], [x2, y2, z2], [x, y2, z2]],
+        [[x2, y, z], [x, y, z], [x, y2, z], [x2, y2, z]],
+        [[x, y, z], [x, y, z2], [x, y2, z2], [x, y2, z]],
+        [[x2, y, z2], [x2, y, z], [x2, y2, z], [x2, y2, z2]],
+        [[x, y, z], [x2, y, z], [x2, y, z2], [x, y, z2]],
+        [[x, y2, z2], [x2, y2, z2], [x2, y2, z], [x, y2, z]],
+      ];
+      const geometry = new BufferGeometry();
+      geometry.setAttribute("position", new Float32BufferAttribute(faces.flatMap((face) => face.flatMap(([px, py, pz]) => [px, -py, -pz])), 3));
+      geometry.setAttribute("uv", new Float32BufferAttribute(faces.flatMap(() => uvCoordinates(uv)), 2));
+      geometry.setIndex(faces.flatMap((_, index) => {
+        const offset = index * 4;
+        return [offset, offset + 1, offset + 2, offset, offset + 2, offset + 3];
+      }));
+      geometry.computeVertexNormals();
+      return new Mesh(geometry, material);
+    }
+
+    function createMembrane(mirror, uv, material) {
+      const x = -10 * mirror;
+      const geometry = new BufferGeometry();
+      geometry.setAttribute("position", new Float32BufferAttribute([x, 0, -0.5, 0, 0, -0.5, 0, 0, -10.5, x, 0, -10.5], 3));
+      geometry.setAttribute("uv", new Float32BufferAttribute(uvCoordinates(uv), 2));
+      geometry.setIndex([0, 1, 2, 0, 2, 3]);
+      geometry.computeVertexNormals();
+      return new Mesh(geometry, material);
+    }
+
+    function matrixGroup() {
+      const group = new Group();
+      group.matrixAutoUpdate = false;
+      return group;
+    }
+
+    function uvCoordinates([u0, v0, u1, v1]) {
+      const left = u0 / 30;
+      const right = u1 / 30;
+      const top = 1 - v0 / 30;
+      const bottom = 1 - v1 / 30;
+      return [left, bottom, right, bottom, right, top, left, top];
+    }
+
+    function prepareTexture(texture) {
+      texture.colorSpace = SRGBColorSpace;
+      texture.magFilter = NearestFilter;
+      texture.minFilter = NearestFilter;
+      texture.needsUpdate = true;
+    }
+
+    function disposeDragonWings(group) {
+      if (!group) return;
+      group.removeFromParent();
+      let material = null;
+      group.traverse((object) => {
+        if (!(object instanceof Mesh)) return;
+        object.geometry.dispose();
+        material = object.material;
+      });
+      material?.dispose();
+    }
+
+    function degrees(value) {
+      return value * Math.PI / 180;
+    }
+
+    function animate(now) {
+      updateDragonWings(stageWings, (now / 1000) * Math.PI * 2);
+      requestAnimationFrame(animate);
+    }
+
+    render();
+    createStage().catch(() => showToast("WebGL 玩家预览不可用"));
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>

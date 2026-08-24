@@ -94,31 +94,74 @@ class SharedScreenTest {
     }
 
     @Test
-    void cosmeticsDrawsEquipmentSlots() {
+    void cosmeticsDrawsCatalogAndPreviewsItems() {
         HeadlessHost host = new HeadlessHost(500, 320);
         SharedCosmetics gui = new SharedCosmetics();
         CosmeticsTestBridge bridge = new CosmeticsTestBridge();
         gui.draw(new UiFrame(host, Theme.DARK), bridge);
-        assertTrue(host.canvas.has("drawString:cosmetics.cape"));
-        assertTrue(host.canvas.has("drawString:cosmetics.wings"));
+        assertTrue(host.canvas.has("drawString:Shop"));
+        assertTrue(host.canvas.has("drawString:Owned"));
+        assertTrue(host.canvas.has("drawString:All"));
+        assertTrue(host.canvas.has("drawString:Cape"));
+        assertTrue(host.canvas.has("drawString:Back"));
+        assertEquals(2, bridge.itemPreviewIds.size());
+        assertEquals("wings:free", bridge.itemPreviewIds.get(0));
+        assertEquals("cape:1", bridge.itemPreviewIds.get(1));
         host.input.endFrame();
-        host.input.setMouse(385, 140);
-        host.input.press(0, 385, 140);
+        host.input.setMouse(180, 100);
+        host.input.press(0, 180, 100);
         gui.draw(new UiFrame(host, Theme.DARK), bridge);
-        assertTrue(bridge.wings);
+        assertEquals("cape:1", bridge.previewedId);
+    }
+
+    @Test
+    void cosmeticsPreviewRotatesByDragging() {
+        HeadlessHost host = new HeadlessHost(500, 320);
+        SharedCosmetics gui = new SharedCosmetics();
+        CosmeticsTestBridge bridge = new CosmeticsTestBridge();
+        host.input.press(0, 350, 120);
+        gui.draw(new UiFrame(host, Theme.DARK), bridge);
+        float initialYaw = bridge.previewYaw;
+        host.input.endFrame();
+        host.input.setMouse(400, 120);
+        gui.draw(new UiFrame(host, Theme.DARK), bridge);
+        assertTrue(bridge.previewYaw > initialYaw);
+        host.input.release(0);
     }
 
     private static final class CosmeticsTestBridge implements CosmeticsBridge {
         boolean wings;
-        public String i18n(String key) { return key; }
+        float previewYaw;
+        String previewedId;
+        final List<String> itemPreviewIds = new ArrayList<String>();
+        public String i18n(String key) {
+            if ("cosmetics.store".equals(key)) return "Shop";
+            if ("cosmetics.owned".equals(key)) return "Owned";
+            if ("cosmetics.filter.all".equals(key)) return "All";
+            if ("cosmetics.filter.cape".equals(key) || "cosmetics.cape".equals(key)) return "Cape";
+            if ("cosmetics.filter.back".equals(key) || "cosmetics.wings".equals(key)) return "Back";
+            return key;
+        }
         public String playerName() { return "Steve"; }
+        public List<Item> items() {
+            List<Item> items = new ArrayList<Item>();
+            items.add(new Item("wings:free", "Classic Wings", "", "wings", "0", true, true, true));
+            items.add(new Item("cape:1", "Test Cape", "", "cape", "998", false, false, false));
+            return items;
+        }
+        public void previewItem(String id) { previewedId = id; }
+        public void paintItemPreview(UiFrame ui, Item item, float x, float y, float w, float h) {
+            itemPreviewIds.add(item.id());
+        }
         public boolean capeEnabled() { return true; }
         public void setCapeEnabled(boolean enabled) { }
         public boolean wingsEnabled() { return wings; }
         public void setWingsEnabled(boolean enabled) { wings = enabled; }
         public float wingScale() { return 1f; }
         public void setWingScale(float scale) { }
-        public void paintPlayerPreview(UiFrame ui, float x, float y, float w, float h, float yaw) { }
+        public void paintPlayerPreview(UiFrame ui, float x, float y, float w, float h, float yaw) {
+            previewYaw = yaw;
+        }
     }
 
     @Test
