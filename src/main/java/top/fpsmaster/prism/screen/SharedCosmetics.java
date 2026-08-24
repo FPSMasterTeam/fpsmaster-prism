@@ -73,6 +73,21 @@ public final class SharedCosmetics {
             ownedOnly = true;
             itemScroll.setOffset(0f);
         }
+
+        String custom = bridge.i18n("cosmetics.custom.open");
+        FontHandle font = ui.font(12);
+        boolean compact = w < 350f;
+        float buttonW = compact ? 20f : Math.min(116f, font.measure(custom) + 24f);
+        float buttonX = x + w - buttonW - 8f;
+        boolean hover = ui.hovered(buttonX, y + 5f, buttonW, 19f);
+        Chrome.button(ui, buttonX, y + 5f, buttonW, 19f, hover);
+        GlyphIcons.draw(ui, "folder", buttonX + 6f, y + 11f, 7f,
+                hover ? ui.theme().textPrimary() : ui.theme().textSecondary());
+        if (!compact) {
+            ui.canvas().drawString(font, fit(font, custom, buttonW - 22f), buttonX + 18f, y + 11f,
+                    hover ? ui.theme().textPrimary() : ui.theme().textSecondary());
+        }
+        if (ui.clicked(buttonX, y + 5f, buttonW, 19f)) bridge.openCustomFolder();
         Chrome.hairlineH(ui, x, y + HEADER_H, w);
         return false;
     }

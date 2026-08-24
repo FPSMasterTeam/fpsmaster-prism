@@ -104,9 +104,14 @@ class SharedScreenTest {
         assertTrue(host.canvas.has("drawString:All"));
         assertTrue(host.canvas.has("drawString:Cape"));
         assertTrue(host.canvas.has("drawString:Back"));
+        assertTrue(host.canvas.has("drawString:Custom folder"));
         assertEquals(2, bridge.itemPreviewIds.size());
         assertEquals("wings:free", bridge.itemPreviewIds.get(0));
         assertEquals("cape:1", bridge.itemPreviewIds.get(1));
+        host.input.endFrame();
+        host.input.press(0, 450, 22);
+        gui.draw(new UiFrame(host, Theme.DARK), bridge);
+        assertTrue(bridge.customFolderOpened);
         host.input.endFrame();
         host.input.setMouse(180, 100);
         host.input.press(0, 180, 100);
@@ -132,6 +137,7 @@ class SharedScreenTest {
     private static final class CosmeticsTestBridge implements CosmeticsBridge {
         float previewYaw;
         String previewedId;
+        boolean customFolderOpened;
         final List<String> itemPreviewIds = new ArrayList<String>();
         public String i18n(String key) {
             if ("cosmetics.store".equals(key)) return "Shop";
@@ -139,6 +145,7 @@ class SharedScreenTest {
             if ("cosmetics.filter.all".equals(key)) return "All";
             if ("cosmetics.filter.cape".equals(key) || "cosmetics.cape".equals(key)) return "Cape";
             if ("cosmetics.filter.back".equals(key) || "cosmetics.wings".equals(key)) return "Back";
+            if ("cosmetics.custom.open".equals(key)) return "Custom folder";
             return key;
         }
         public String playerName() { return "Steve"; }
@@ -149,6 +156,7 @@ class SharedScreenTest {
             return items;
         }
         public void previewItem(String id) { previewedId = id; }
+        public void openCustomFolder() { customFolderOpened = true; }
         public void paintItemPreview(UiFrame ui, Item item, float x, float y, float w, float h) {
             itemPreviewIds.add(item.id());
         }

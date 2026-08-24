@@ -67,6 +67,9 @@ public interface CosmeticsBridge {
         return "";
     }
 
+    default void openCustomFolder() {
+    }
+
     default void paintItemPreview(UiFrame ui, Item item, float x, float y, float w, float h) {
     }
 
