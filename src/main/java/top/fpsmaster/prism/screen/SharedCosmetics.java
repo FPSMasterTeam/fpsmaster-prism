@@ -222,7 +222,7 @@ public final class SharedCosmetics {
         if (ui.clicked(x + w - 24f, y + 7f, 16f, 16f)) previewYaw = 180f;
 
         boolean back = item != null && isBack(item.category());
-        float footerH = back ? 72f : 50f;
+        float footerH = 50f;
         float stageY = y + TOOLBAR_H;
         float stageH = h - TOOLBAR_H - footerH;
         ui.canvas().fillRect(x + 0.5f, stageY, w - 0.5f, stageH, ui.theme().layer());
@@ -272,29 +272,23 @@ public final class SharedCosmetics {
 
     private void drawBackSettings(UiFrame ui, CosmeticsBridge bridge, float x, float y, float w) {
         FontHandle font = ui.font(12);
-        String visible = bridge.i18n("cosmetics.wings.visible");
-        ui.canvas().drawString(font, visible, x, y + 4f, ui.theme().textSecondary());
-        boolean enabled = bridge.wingsEnabled();
-        boolean next = Chrome.toggle(ui, x + font.measure(visible) + 7f, y, enabled);
-        if (next != enabled) bridge.setWingsEnabled(next);
-
         boolean adjustable = bridge.wingScaleAdjustable();
         String scaleLabel = bridge.i18n("cosmetics.wings.scale");
-        ui.canvas().drawString(font, scaleLabel, x, y + 25f,
-                enabled && adjustable ? ui.theme().textSecondary() : ui.theme().textDisabled());
+        ui.canvas().drawString(font, scaleLabel, x, y + 4f,
+                adjustable ? ui.theme().textSecondary() : ui.theme().textDisabled());
         String scaleValue = Math.round(bridge.wingScale() * 100f) + "%";
         float valueW = font.measure(scaleValue);
-        ui.canvas().drawString(font, scaleValue, x + w - valueW, y + 25f,
-                enabled ? ui.theme().textSecondary() : ui.theme().textDisabled());
+        ui.canvas().drawString(font, scaleValue, x + w - valueW, y + 4f,
+                adjustable ? ui.theme().textSecondary() : ui.theme().textDisabled());
         float sliderX = x + Math.min(74f, font.measure(scaleLabel) + 8f);
         float sliderW = Math.max(30f, w - (sliderX - x) - valueW - 7f);
         float scale = bridge.wingScale();
         if (adjustable) {
-            scale = Chrome.slider(ui, scaleDrag, sliderX, y + 21f, sliderW, scale);
+            scale = Chrome.slider(ui, scaleDrag, sliderX, y, sliderW, scale);
         } else {
-            Chrome.slider(ui, sliderX, y + 21f, sliderW, scale, false);
+            Chrome.slider(ui, sliderX, y, sliderW, scale, false);
         }
-        if (enabled && adjustable && scale != bridge.wingScale()) bridge.setWingScale(scale);
+        if (adjustable && scale != bridge.wingScale()) bridge.setWingScale(scale);
     }
 
     private void drawCapeSettings(UiFrame ui, CosmeticsBridge bridge, float x, float y, float w) {

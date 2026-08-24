@@ -74,10 +74,6 @@ public interface CosmeticsBridge {
 
     void setCapeEnabled(boolean enabled);
 
-    boolean wingsEnabled();
-
-    void setWingsEnabled(boolean enabled);
-
     float wingScale();
 
     void setWingScale(float scale);

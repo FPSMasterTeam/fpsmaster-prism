@@ -130,7 +130,6 @@ class SharedScreenTest {
     }
 
     private static final class CosmeticsTestBridge implements CosmeticsBridge {
-        boolean wings;
         float previewYaw;
         String previewedId;
         final List<String> itemPreviewIds = new ArrayList<String>();
@@ -155,8 +154,6 @@ class SharedScreenTest {
         }
         public boolean capeEnabled() { return true; }
         public void setCapeEnabled(boolean enabled) { }
-        public boolean wingsEnabled() { return wings; }
-        public void setWingsEnabled(boolean enabled) { wings = enabled; }
         public float wingScale() { return 1f; }
         public void setWingScale(float scale) { }
         public void paintPlayerPreview(UiFrame ui, float x, float y, float w, float h, float yaw) {
