@@ -168,6 +168,36 @@ class SharedScreenTest {
         assertTrue(host.canvas.has("drawString:Sync off"));
     }
 
+    @Test
+    void cosmeticsPrefersStatusMessageOverDefaultSyncNotice() {
+        DefaultSyncBridge bridge = new DefaultSyncBridge();
+        HeadlessHost host = new HeadlessHost(500, 320);
+        new SharedCosmetics().draw(new UiFrame(host, Theme.DARK), bridge);
+        assertTrue(host.canvas.has("drawString:Sync off"));
+
+        bridge.statusMessage = "Low balance";
+        host = new HeadlessHost(500, 320);
+        new SharedCosmetics().draw(new UiFrame(host, Theme.DARK), bridge);
+        assertTrue(host.canvas.has("drawString:Low balance"));
+        assertFalse(host.canvas.has("drawString:Sync off"));
+    }
+
+    /** Leaves syncStatus() unoverridden, so it pins the interface default. */
+    private static final class DefaultSyncBridge implements CosmeticsBridge {
+        String statusMessage = "";
+        public String i18n(String key) {
+            if ("cosmetics.sync.unavailable".equals(key)) return "Sync off";
+            return key;
+        }
+        public String playerName() { return "Steve"; }
+        public String statusMessage() { return statusMessage; }
+        public boolean capeEnabled() { return true; }
+        public void setCapeEnabled(boolean enabled) { }
+        public float wingScale() { return 1f; }
+        public void setWingScale(float scale) { }
+        public void paintPlayerPreview(UiFrame ui, float x, float y, float w, float h, float yaw) { }
+    }
+
     private static final class CosmeticsTestBridge implements CosmeticsBridge {
         float previewYaw;
         String previewedId;

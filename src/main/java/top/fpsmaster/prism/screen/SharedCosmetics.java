@@ -252,8 +252,8 @@ public final class SharedCosmetics {
         if (back) drawBackSettings(ui, bridge, all, item, innerX, footerY + 7f, innerW);
         else drawCapeSettings(ui, bridge, innerX, footerY + 7f, innerW);
 
-        String status = syncStatusText(bridge);
-        if (status.isEmpty()) status = bridge.statusMessage();
+        String status = bridge.statusMessage();
+        if (status == null || status.isEmpty()) status = syncStatusText(bridge);
         if (status != null && !status.isEmpty()) {
             ui.canvas().drawString(ui.font(10), fit(ui.font(10), status, innerW - 94f), innerX,
                     y + h - 17f, ui.theme().textDisabled());
