@@ -17,6 +17,8 @@ public final class SharedCosmetics {
     private static final float TOOLBAR_H = 33f;
     private static final float CARD_H = 104f;
     private static final float GAP = 7f;
+    private static final float DEFAULT_MIN_SCALE = 0.5f;
+    private static final float DEFAULT_MAX_SCALE = 1.5f;
 
     private final Object scaleDrag = new Object();
     private final Object previewDrag = new Object();
@@ -53,7 +55,7 @@ public final class SharedCosmetics {
         float catalogX = panelX + 9f;
         float catalogW = rightX - catalogX - 9f;
         drawCatalog(ui, bridge, all, catalogX, contentY, catalogW, panelH - HEADER_H - 9f);
-        drawPreview(ui, bridge, selected(all), rightX, contentY, rightW, panelH - HEADER_H);
+        drawPreview(ui, bridge, all, selected(all), rightX, contentY, rightW, panelH - HEADER_H);
         return false;
     }
 
@@ -215,8 +217,8 @@ public final class SharedCosmetics {
         }
     }
 
-    private void drawPreview(UiFrame ui, CosmeticsBridge bridge, CosmeticsBridge.Item item,
-                             float x, float y, float w, float h) {
+    private void drawPreview(UiFrame ui, CosmeticsBridge bridge, List<CosmeticsBridge.Item> all,
+                             CosmeticsBridge.Item item, float x, float y, float w, float h) {
         float pad = 9f;
         float innerX = x + pad;
         float innerW = w - pad * 2f;
@@ -247,10 +249,11 @@ public final class SharedCosmetics {
 
         float footerY = stageY + stageH;
         Chrome.hairlineH(ui, x, footerY, w);
-        if (back) drawBackSettings(ui, bridge, innerX, footerY + 7f, innerW);
+        if (back) drawBackSettings(ui, bridge, all, item, innerX, footerY + 7f, innerW);
         else drawCapeSettings(ui, bridge, innerX, footerY + 7f, innerW);
 
         String status = bridge.statusMessage();
+        if (status == null || status.isEmpty()) status = syncStatusText(bridge);
         if (status != null && !status.isEmpty()) {
             ui.canvas().drawString(ui.font(10), fit(ui.font(10), status, innerW - 94f), innerX,
                     y + h - 17f, ui.theme().textDisabled());
@@ -285,25 +288,57 @@ public final class SharedCosmetics {
         }
     }
 
-    private void drawBackSettings(UiFrame ui, CosmeticsBridge bridge, float x, float y, float w) {
+    private void drawBackSettings(UiFrame ui, CosmeticsBridge bridge, List<CosmeticsBridge.Item> all,
+                                  CosmeticsBridge.Item shown, float x, float y, float w) {
         FontHandle font = ui.font(12);
-        boolean adjustable = bridge.wingScaleAdjustable();
+        CosmeticsBridge.Item policy = equippedBack(all);
+        if (policy == null) policy = shown;
+        float min = policy == null ? DEFAULT_MIN_SCALE : policy.minScale();
+        float max = policy == null ? DEFAULT_MAX_SCALE : policy.maxScale();
+        boolean adjustable = bridge.wingScaleAdjustable()
+                && (policy == null || policy.allowResize())
+                && max - min > 1e-4f;
+        float scale = Math.max(min, Math.min(max, bridge.wingScale()));
         String scaleLabel = bridge.i18n("cosmetics.wings.scale");
         ui.canvas().drawString(font, scaleLabel, x, y + 4f,
                 adjustable ? ui.theme().textSecondary() : ui.theme().textDisabled());
-        String scaleValue = Math.round(bridge.wingScale() * 100f) + "%";
+        String scaleValue = Math.round(scale * 100f) + "%";
         float valueW = font.measure(scaleValue);
         ui.canvas().drawString(font, scaleValue, x + w - valueW, y + 4f,
                 adjustable ? ui.theme().textSecondary() : ui.theme().textDisabled());
         float sliderX = x + Math.min(74f, font.measure(scaleLabel) + 8f);
         float sliderW = Math.max(30f, w - (sliderX - x) - valueW - 7f);
-        float scale = bridge.wingScale();
+        float t = track(scale, min, max);
         if (adjustable) {
-            scale = Chrome.slider(ui, scaleDrag, sliderX, y, sliderW, scale);
+            t = Chrome.slider(ui, scaleDrag, sliderX, y, sliderW, t);
+            scale = min + t * (max - min);
         } else {
-            Chrome.slider(ui, sliderX, y, sliderW, scale, false);
+            Chrome.slider(ui, sliderX, y, sliderW, t, false);
         }
-        if (adjustable && scale != bridge.wingScale()) bridge.setWingScale(scale);
+        if (Math.abs(scale - bridge.wingScale()) > 1e-4f) bridge.setWingScale(scale);
+    }
+
+    private CosmeticsBridge.Item equippedBack(List<CosmeticsBridge.Item> items) {
+        for (CosmeticsBridge.Item item : items) {
+            if (item.equipped() && isBack(item.category())) return item;
+        }
+        return null;
+    }
+
+    /** Maps a scale onto the 0..1 slider track, falling back to the default band when locked. */
+    private float track(float scale, float min, float max) {
+        if (max - min <= 1e-4f) {
+            min = DEFAULT_MIN_SCALE;
+            max = DEFAULT_MAX_SCALE;
+        }
+        return (scale - min) / (max - min);
+    }
+
+    /** Only reports non-ok loadout sync states; success is never announced. */
+    private String syncStatusText(CosmeticsBridge bridge) {
+        String status = bridge.syncStatus();
+        if (status == null || status.isEmpty() || "ok".equals(status)) return "";
+        return bridge.i18n("cosmetics.sync." + status);
     }
 
     private void drawCapeSettings(UiFrame ui, CosmeticsBridge bridge, float x, float y, float w) {

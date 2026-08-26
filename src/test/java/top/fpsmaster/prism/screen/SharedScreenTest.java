@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SharedScreenTest {
@@ -134,10 +135,77 @@ class SharedScreenTest {
         host.input.release(0);
     }
 
+    @Test
+    void cosmeticsWingSliderFollowsItemScalePolicy() {
+        CosmeticsTestBridge bridge = new CosmeticsTestBridge();
+        bridge.wings = new CosmeticsBridge.Item("wings:free", "Classic Wings", "", "wings", "0",
+                true, true, true, 1f, true, 0.7f, 1.3f);
+        bridge.wingScale = 2f;
+        HeadlessHost host = new HeadlessHost(500, 320);
+        new SharedCosmetics().draw(new UiFrame(host, Theme.DARK), bridge);
+        assertEquals(1.3f, bridge.wingScale, 1e-4f);
+        assertTrue(host.canvas.has("drawString:130%"));
+
+        bridge.wings = new CosmeticsBridge.Item("wings:free", "Classic Wings", "", "wings", "0",
+                true, true, true, 0.8f, false, 0.8f, 0.8f);
+        bridge.wingScale = 1.2f;
+        host = new HeadlessHost(500, 320);
+        new SharedCosmetics().draw(new UiFrame(host, Theme.DARK), bridge);
+        assertEquals(0.8f, bridge.wingScale, 1e-4f);
+        assertTrue(host.canvas.has("drawString:80%"));
+    }
+
+    @Test
+    void cosmeticsShowsSyncStatusOnlyWhenNotOk() {
+        CosmeticsTestBridge bridge = new CosmeticsTestBridge();
+        HeadlessHost host = new HeadlessHost(500, 320);
+        new SharedCosmetics().draw(new UiFrame(host, Theme.DARK), bridge);
+        assertFalse(host.canvas.has("drawString:Sync off"));
+
+        bridge.syncStatus = "unavailable";
+        host = new HeadlessHost(500, 320);
+        new SharedCosmetics().draw(new UiFrame(host, Theme.DARK), bridge);
+        assertTrue(host.canvas.has("drawString:Sync off"));
+    }
+
+    @Test
+    void cosmeticsPrefersStatusMessageOverDefaultSyncNotice() {
+        DefaultSyncBridge bridge = new DefaultSyncBridge();
+        HeadlessHost host = new HeadlessHost(500, 320);
+        new SharedCosmetics().draw(new UiFrame(host, Theme.DARK), bridge);
+        assertTrue(host.canvas.has("drawString:Sync off"));
+
+        bridge.statusMessage = "Low balance";
+        host = new HeadlessHost(500, 320);
+        new SharedCosmetics().draw(new UiFrame(host, Theme.DARK), bridge);
+        assertTrue(host.canvas.has("drawString:Low balance"));
+        assertFalse(host.canvas.has("drawString:Sync off"));
+    }
+
+    /** Leaves syncStatus() unoverridden, so it pins the interface default. */
+    private static final class DefaultSyncBridge implements CosmeticsBridge {
+        String statusMessage = "";
+        public String i18n(String key) {
+            if ("cosmetics.sync.unavailable".equals(key)) return "Sync off";
+            return key;
+        }
+        public String playerName() { return "Steve"; }
+        public String statusMessage() { return statusMessage; }
+        public boolean capeEnabled() { return true; }
+        public void setCapeEnabled(boolean enabled) { }
+        public float wingScale() { return 1f; }
+        public void setWingScale(float scale) { }
+        public void paintPlayerPreview(UiFrame ui, float x, float y, float w, float h, float yaw) { }
+    }
+
     private static final class CosmeticsTestBridge implements CosmeticsBridge {
         float previewYaw;
         String previewedId;
         boolean customFolderOpened;
+        float wingScale = 1f;
+        String syncStatus = "ok";
+        CosmeticsBridge.Item wings =
+                new CosmeticsBridge.Item("wings:free", "Classic Wings", "", "wings", "0", true, true, true);
         final List<String> itemPreviewIds = new ArrayList<String>();
         public String i18n(String key) {
             if ("cosmetics.store".equals(key)) return "Shop";
@@ -146,12 +214,13 @@ class SharedScreenTest {
             if ("cosmetics.filter.cape".equals(key) || "cosmetics.cape".equals(key)) return "Cape";
             if ("cosmetics.filter.back".equals(key) || "cosmetics.wings".equals(key)) return "Back";
             if ("cosmetics.custom.open".equals(key)) return "Custom folder";
+            if ("cosmetics.sync.unavailable".equals(key)) return "Sync off";
             return key;
         }
         public String playerName() { return "Steve"; }
         public List<Item> items() {
             List<Item> items = new ArrayList<Item>();
-            items.add(new Item("wings:free", "Classic Wings", "", "wings", "0", true, true, true));
+            items.add(wings);
             items.add(new Item("cape:1", "Test Cape", "", "cape", "998", false, false, false));
             return items;
         }
@@ -162,8 +231,9 @@ class SharedScreenTest {
         }
         public boolean capeEnabled() { return true; }
         public void setCapeEnabled(boolean enabled) { }
-        public float wingScale() { return 1f; }
-        public void setWingScale(float scale) { }
+        public float wingScale() { return wingScale; }
+        public void setWingScale(float scale) { wingScale = scale; }
+        public String syncStatus() { return syncStatus; }
         public void paintPlayerPreview(UiFrame ui, float x, float y, float w, float h, float yaw) {
             previewYaw = yaw;
         }
