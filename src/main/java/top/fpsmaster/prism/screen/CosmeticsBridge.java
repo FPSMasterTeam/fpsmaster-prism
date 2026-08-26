@@ -86,9 +86,9 @@ public interface CosmeticsBridge {
         return "";
     }
 
-    /** Loadout sync state: {@code ok}, {@code unavailable} or {@code failed}. */
+    /** Loadout sync state: {@code ok}, {@code unavailable} or {@code failed}. Default unavailable so hosts must opt in. */
     default String syncStatus() {
-        return "ok";
+        return "unavailable";
     }
 
     default void openCustomFolder() {
