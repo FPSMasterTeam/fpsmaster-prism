@@ -28,9 +28,20 @@ public final class SharedHudEditor {
     private float guideY = Float.NaN;
     private boolean dirty;
 
+    /** HUD surface rectangle in editor space; see HudEditorBridge.contentBounds. */
+    private float contentX;
+    private float contentY;
+    private float contentW;
+    private float contentH;
+
     public void draw(UiFrame ui, HudEditorBridge bridge) {
         float width = ui.host().width();
         float height = ui.host().height();
+        float[] bounds = bridge.contentBounds(width, height);
+        contentX = bounds[0];
+        contentY = bounds[1];
+        contentW = bounds[2];
+        contentH = bounds[3];
         ui.canvas().fillRect(0f, 0f, width, height, Argb.of(178, 5, 8, 10));
         drawGrid(ui, width, height);
 
@@ -125,14 +136,14 @@ public final class SharedHudEditor {
             float sx = (ui.input().mouseX() - activeX) / item.baseWidth;
             float sy = (ui.input().mouseY() - activeY) / item.baseHeight;
             scale = clamp(Math.max(sx, sy), item.minScale, item.maxScale);
-            x = Math.min(activeX, Math.max(0f, width - item.baseWidth * scale));
-            y = Math.min(activeY, Math.max(CONTENT_TOP, height - item.baseHeight * scale));
+            x = Math.min(activeX, Math.max(contentX, contentX + contentW - item.baseWidth * scale));
+            y = Math.min(activeY, Math.max(contentY, contentY + contentH - item.baseHeight * scale));
             guideX = Float.NaN;
             guideY = Float.NaN;
         } else {
-            x = clamp(ui.input().mouseX() - dragOffsetX, 0f, Math.max(0f, width - item.width()));
-            y = clamp(ui.input().mouseY() - dragOffsetY, CONTENT_TOP, Math.max(CONTENT_TOP, height - item.height()));
-            float[] snapped = snap(item, items, x, y, width, height);
+            x = clamp(ui.input().mouseX() - dragOffsetX, contentX, Math.max(contentX, contentX + contentW - item.width()));
+            y = clamp(ui.input().mouseY() - dragOffsetY, contentY, Math.max(contentY, contentY + contentH - item.height()));
+            float[] snapped = snap(item, items, x, y);
             x = snapped[0];
             y = snapped[1];
         }
@@ -141,7 +152,7 @@ public final class SharedHudEditor {
     }
 
     private float[] snap(HudEditorBridge.Item item, List<HudEditorBridge.Item> items,
-                         float x, float y, float width, float height) {
+                         float x, float y) {
         float w = item.width();
         float h = item.height();
         float gridX = Math.round(x / GRID) * GRID;
@@ -157,8 +168,8 @@ public final class SharedHudEditor {
         float[] horizontal = new float[3 + items.size() * 3];
         int vc = 0;
         int hc = 0;
-        vertical[vc++] = 0f; vertical[vc++] = width / 2f; vertical[vc++] = width;
-        horizontal[hc++] = CONTENT_TOP; horizontal[hc++] = (CONTENT_TOP + height) / 2f; horizontal[hc++] = height;
+        vertical[vc++] = contentX; vertical[vc++] = contentX + contentW / 2f; vertical[vc++] = contentX + contentW;
+        horizontal[hc++] = contentY; horizontal[hc++] = contentY + contentH / 2f; horizontal[hc++] = contentY + contentH;
         for (HudEditorBridge.Item other : items) {
             if (other.id.equals(item.id)) continue;
             vertical[vc++] = other.x; vertical[vc++] = other.x + other.width() / 2f; vertical[vc++] = other.x + other.width();
@@ -176,8 +187,8 @@ public final class SharedHudEditor {
             float d = Math.abs(yp[p] - horizontal[i]);
             if (d <= bestY) { bestY = d; y = horizontal[i] - yo[p]; guideY = horizontal[i]; }
         }
-        return new float[]{clamp(x, 0f, Math.max(0f, width - w)),
-                clamp(y, CONTENT_TOP, Math.max(CONTENT_TOP, height - h))};
+        return new float[]{clamp(x, contentX, Math.max(contentX, contentX + contentW - w)),
+                clamp(y, contentY, Math.max(contentY, contentY + contentH - h))};
     }
 
     private void drawGrid(UiFrame ui, float width, float height) {

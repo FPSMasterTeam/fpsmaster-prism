@@ -9,6 +9,19 @@ public interface HudEditorBridge {
 
     List<Item> items();
 
+    /**
+     * Editor-space rectangle that the host's HUD surface maps onto, as {x, y, width, height}.
+     *
+     * <p>The editor clamps movement, resizing and edge snapping to this rectangle. Hosts that letterbox
+     * the HUD surface to preserve its aspect ratio must report the letterboxed rectangle, otherwise a
+     * component can be dragged into the bar beside it and then jumps back when the host re-anchors the
+     * dropped position. The default fills the whole content area, which is correct for hosts that map
+     * the HUD surface 1:1 onto it.
+     */
+    default float[] contentBounds(float width, float height) {
+        return new float[]{0f, SharedHudEditor.CONTENT_TOP, width, height - SharedHudEditor.CONTENT_TOP};
+    }
+
     /** Paint the platform-owned preview at the editor position and scale. */
     void paintPreview(String id, float x, float y, float scale);
 
