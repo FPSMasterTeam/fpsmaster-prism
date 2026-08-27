@@ -90,6 +90,7 @@ public final class TextBox {
         String shown = empty ? placeholder : text;
         int color = empty ? ui.theme().textDisabled() : ui.theme().textPrimary();
         ui.canvas().pushClip(x + 3f, y, w - 6f, h);
+        try {
         ui.canvas().drawString(font, shown, x + padLeft, Chrome.textY(y, h, font), color);
         if (focused && !empty) {
             float caretX = Math.min(x + w - 4f, x + padLeft + font.measure(text) + 1f);
@@ -97,7 +98,9 @@ public final class TextBox {
             ui.canvas().fillRoundRect(caretX, y + 4f, 0.75f, Math.max(3f, h - 8f), 0.4f,
                     top.fpsmaster.prism.theme.Argb.lerp(ui.theme().accentSoft(), ui.theme().accent(), pulse));
         }
+        } finally {
         ui.canvas().popClip();
+        }
         ui.input().markHovered(id, x, y, w, h);
     }
 

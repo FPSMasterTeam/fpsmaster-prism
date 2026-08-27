@@ -312,6 +312,7 @@ public final class SharedClickGui {
         if (extra > 0.4f && !mod.settings.isEmpty()) {
             Chrome.hairlineH(ui, x + 6f, y + Metrics.MODULE_ROW, w - 12f);
             ui.canvas().pushClip(x, y + Metrics.MODULE_ROW, w, extra);
+            try {
             float vy = y + Metrics.MODULE_ROW;
             String lastGroup = null;
             boolean collapsed = false;
@@ -333,7 +334,9 @@ public final class SharedClickGui {
                 }
                 vy += drawSetting(ui, bridge, mod, s, x, vy, w, dt);
             }
+            } finally {
             ui.canvas().popClip();
+            }
         }
         return Metrics.MODULE_ROW + 3f + extra;
     }

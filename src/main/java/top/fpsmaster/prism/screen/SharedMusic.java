@@ -439,6 +439,7 @@ public final class SharedMusic {
         float eased = Anim.cssEase(openT);
         ui.canvas().pushClip(x + 1f, y + 1f, w - 2f, h - 2f);
         ui.canvas().pushTransform();
+        try {
         ui.canvas().translate(0f, (1f - eased) * h);
         ui.canvas().fillRoundRect(x + 1f, y + 1f, w - 2f, h - 2f, Metrics.PANEL_RADIUS,
                 Argb.lerp(ui.theme().glass(), ui.theme().accentSoft(), 0.18f));
@@ -465,8 +466,10 @@ public final class SharedMusic {
         if (ui.clicked(x + 14f, barY - 7f, 20f, 20f)) bridge.togglePause();
         GlyphIcons.draw(ui, bridge.playing() && !bridge.paused() ? "pause" : "play",
                 x + 20f, barY - 1f, 8f, ui.theme().textPrimary());
+        } finally {
         ui.canvas().popTransform();
         ui.canvas().popClip();
+        }
     }
 
     private float dt(UiFrame ui) {
