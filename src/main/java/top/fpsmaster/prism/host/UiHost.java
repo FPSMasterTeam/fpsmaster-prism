@@ -30,6 +30,11 @@ public interface UiHost {
 
     void blurBehind(float x, float y, float w, float h, float radius);
 
+    /** When false, {@link top.fpsmaster.prism.anim.Anim#approach} jumps to the target this frame. */
+    default boolean animationsEnabled() {
+        return true;
+    }
+
     ImageHandle image(String id);
 
     /** Resolve a tinted icon/texture for a given on-screen size (hosts pick a resolution bucket). */

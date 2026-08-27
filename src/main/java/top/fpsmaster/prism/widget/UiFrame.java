@@ -1,5 +1,6 @@
 package top.fpsmaster.prism.widget;
 
+import top.fpsmaster.prism.anim.Anim;
 import top.fpsmaster.prism.canvas.Canvas;
 import top.fpsmaster.prism.canvas.FontHandle;
 import top.fpsmaster.prism.geom.Hit;
@@ -17,6 +18,7 @@ public final class UiFrame {
     public UiFrame(UiHost host, Theme theme) {
         this.host = host;
         this.theme = theme;
+        Anim.setEnabled(host.animationsEnabled());
     }
 
     public UiHost host() {

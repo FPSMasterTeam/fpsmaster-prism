@@ -23,4 +23,14 @@ class AnimTest {
         assertTrue(v > 0.9f);
         assertEquals(1f, Anim.approach(0.999f, 1f, 0.25f, 1f / 60f), 1e-4f);
     }
+
+    @Test
+    void approachJumpsWhenDisabled() {
+        Anim.setEnabled(false);
+        try {
+            assertEquals(1f, Anim.approach(0f, 1f, 0.01f, 1f / 60f), 1e-5f);
+        } finally {
+            Anim.setEnabled(true);
+        }
+    }
 }

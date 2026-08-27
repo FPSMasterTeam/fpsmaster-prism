@@ -6,10 +6,19 @@ package top.fpsmaster.prism.anim;
  * {@code cubic-bezier(0.25, 0.1, 0.25, 1)}.
  */
 public final class Anim {
+    private static boolean enabled = true;
+
     private Anim() {
     }
 
+    public static void setEnabled(boolean value) {
+        enabled = value;
+    }
+
     public static float approach(float current, float target, float speed, float dtSec) {
+        if (!enabled) {
+            return target;
+        }
         float fps = dtSec <= 1e-4f ? 60f : 1f / dtSec;
         if (fps < 5f) {
             fps = 60f;
