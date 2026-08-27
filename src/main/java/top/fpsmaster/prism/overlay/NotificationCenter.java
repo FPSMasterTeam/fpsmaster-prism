@@ -58,14 +58,14 @@ public final class NotificationCenter {
             ui.canvas().strokeRoundRect(x + 0.5f, entry.y + 0.5f, width - 1f, HEIGHT - 1f,
                     4.5f, 1f, ui.theme().stroke());
             ui.canvas().fillCircle(x + 8f, entry.y + HEIGHT * 0.5f, 2f, tone);
-            ui.canvas().pushClip(x + 14f, entry.y + 2f, width - 19f, HEIGHT - 4f);
+            ui.pushClip(x + 14f, entry.y + 2f, width - 19f, HEIGHT - 4f);
             try {
             ui.canvas().drawString(titleFont, ellipsize(titleFont, entry.title, width - 21f),
                     x + 14f, entry.y + 3f, ui.theme().textPrimary());
             ui.canvas().drawString(bodyFont, ellipsize(bodyFont, entry.description, width - 21f),
                     x + 14f, entry.y + 13f, ui.theme().textSecondary());
             } finally {
-            ui.canvas().popClip();
+            ui.popClip();
             }
             float progress = Math.max(0f, Math.min(1f, age / lifetime));
             ui.canvas().fillRoundRect(x + 5f, entry.y + HEIGHT - 1.25f,

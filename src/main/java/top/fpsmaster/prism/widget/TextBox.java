@@ -89,7 +89,7 @@ public final class TextBox {
         boolean empty = text.isEmpty();
         String shown = empty ? placeholder : text;
         int color = empty ? ui.theme().textDisabled() : ui.theme().textPrimary();
-        ui.canvas().pushClip(x + 3f, y, w - 6f, h);
+        ui.pushClip(x + 3f, y, w - 6f, h);
         try {
         ui.canvas().drawString(font, shown, x + padLeft, Chrome.textY(y, h, font), color);
         if (focused && !empty) {
@@ -99,7 +99,7 @@ public final class TextBox {
                     top.fpsmaster.prism.theme.Argb.lerp(ui.theme().accentSoft(), ui.theme().accent(), pulse));
         }
         } finally {
-        ui.canvas().popClip();
+        ui.popClip();
         }
         ui.input().markHovered(id, x, y, w, h);
     }

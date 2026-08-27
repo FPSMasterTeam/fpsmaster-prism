@@ -437,7 +437,7 @@ public final class SharedMusic {
     private void drawImmersiveLyrics(UiFrame ui, MusicBridge bridge, float x, float y, float w, float h,
                                      float dt, float openT) {
         float eased = Anim.cssEase(openT);
-        ui.canvas().pushClip(x + 1f, y + 1f, w - 2f, h - 2f);
+        ui.pushClip(x + 1f, y + 1f, w - 2f, h - 2f);
         ui.canvas().pushTransform();
         try {
         ui.canvas().translate(0f, (1f - eased) * h);
@@ -468,7 +468,7 @@ public final class SharedMusic {
                 x + 20f, barY - 1f, 8f, ui.theme().textPrimary());
         } finally {
         ui.canvas().popTransform();
-        ui.canvas().popClip();
+        ui.popClip();
         }
     }
 

@@ -36,7 +36,7 @@ public final class Scroll {
         if (offset < min) {
             offset = min;
         }
-        ui.canvas().pushClip(x, y, w, viewH);
+        ui.pushClip(x, y, w, viewH);
         if (contentH > viewH) {
             float trackH = Math.max(12f, viewH * viewH / contentH);
             float maxUp = contentH - viewH;
@@ -48,7 +48,7 @@ public final class Scroll {
     }
 
     public void end(UiFrame ui) {
-        ui.canvas().popClip();
+        ui.popClip();
         ui.input().markHovered(id, 0, 0, 0, 0);
     }
 
