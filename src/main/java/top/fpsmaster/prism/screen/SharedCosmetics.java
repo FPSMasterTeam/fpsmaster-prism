@@ -210,10 +210,16 @@ public final class SharedCosmetics {
         float metaW = Math.min(metaFont.measure(meta), w * 0.42f);
         FontHandle nameFont = ui.font(14);
         String name = fit(nameFont, item.name(), w - metaW - (meta.isEmpty() ? 16f : 19f));
-        FontBold.draw(ui, 14, name, x + 8f, y + visualH + 7f, ui.theme().textPrimary());
+        // 页脚是一条 footerH 高的独立区域，名字和价签要在它里面垂直居中。原来写死的
+        // +7 / +8 是按「行盒顶」量的，名字的 7px 行盒落在 [+7, +14]，而页脚中心在 +14,
+        // 整块字比中线高了 3.5px，卡片看上去就是字贴着分隔线。
+        float footerTop = y + visualH;
+        FontBold.draw(ui, 14, name, x + 8f, Chrome.textY(footerTop, footerH, nameFont),
+                ui.theme().textPrimary());
         if (!meta.isEmpty()) {
             ui.canvas().drawString(metaFont, fit(metaFont, meta, w * 0.42f), x + w - metaW - 8f,
-                    y + visualH + 8f, item.builtin() ? ui.theme().ok() : ui.theme().textDisabled());
+                    Chrome.textY(footerTop, footerH, metaFont),
+                    item.builtin() ? ui.theme().ok() : ui.theme().textDisabled());
         }
     }
 
