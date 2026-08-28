@@ -15,6 +15,7 @@ public final class TextBox {
     private String placeholder = "";
     private int fontSize = 14;
     private boolean paintBox = true;
+    private boolean masked;
     private float padLeft = 4f;
     private final Object id = new Object();
     private float focusT;
@@ -39,6 +40,11 @@ public final class TextBox {
 
     public void setPaintBox(boolean paintBox) {
         this.paintBox = paintBox;
+    }
+
+    /** Renders bullets instead of the characters. {@link #text()} still returns the real value. */
+    public void setMasked(boolean masked) {
+        this.masked = masked;
     }
 
     public void setPadLeft(float padLeft) {
@@ -72,7 +78,10 @@ public final class TextBox {
             focused = false;
         }
         if (focused) {
-            String typed = ui.input().typedChars();
+            // 消费式：同一帧里两个输入框都拿到焦点时（宿主一帧塞进两次按下），
+            // 非消费式的 typedChars() 会把同一批字符交给两个框，玩家在账号里输的字
+            // 会同时长在密码框里。取走之后「同帧第二个框再吃一遍」结构上不可达。
+            String typed = ui.input().consumeTypedChars();
             if (typed != null && !typed.isEmpty()) {
                 text = text + typed;
             }
@@ -87,13 +96,15 @@ public final class TextBox {
         }
         FontHandle font = ui.font(fontSize);
         boolean empty = text.isEmpty();
-        String shown = empty ? placeholder : text;
+        // 遮蔽只影响绘制，光标也得按遮蔽后的串量宽，否则密码框的光标会停在实际字宽处。
+        String visible = masked ? bullets(text.length()) : text;
+        String shown = empty ? placeholder : visible;
         int color = empty ? ui.theme().textDisabled() : ui.theme().textPrimary();
         ui.pushClip(x + 3f, y, w - 6f, h);
         try {
         ui.canvas().drawString(font, shown, x + padLeft, Chrome.textY(y, h, font), color);
         if (focused && !empty) {
-            float caretX = Math.min(x + w - 4f, x + padLeft + font.measure(text) + 1f);
+            float caretX = Math.min(x + w - 4f, x + padLeft + font.measure(visible) + 1f);
             float pulse = (float) ((Math.sin(now / 180_000_000d) + 1d) * 0.5d);
             ui.canvas().fillRoundRect(caretX, y + 4f, 0.75f, Math.max(3f, h - 8f), 0.4f,
                     top.fpsmaster.prism.theme.Argb.lerp(ui.theme().accentSoft(), ui.theme().accent(), pulse));
@@ -102,6 +113,14 @@ public final class TextBox {
         ui.popClip();
         }
         ui.input().markHovered(id, x, y, w, h);
+    }
+
+    private static String bullets(int count) {
+        StringBuilder sb = new StringBuilder(count);
+        for (int i = 0; i < count; i++) {
+            sb.append('\u2022');
+        }
+        return sb.toString();
     }
 
     public static float height() {

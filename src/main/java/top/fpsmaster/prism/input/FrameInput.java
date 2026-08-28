@@ -219,6 +219,15 @@ public final class FrameInput implements Input {
         return typed.toString();
     }
 
+    public String consumeTypedChars() {
+        if (typed.length() == 0) {
+            return "";
+        }
+        String text = typed.toString();
+        typed.setLength(0);
+        return text;
+    }
+
     public String clipboard() {
         return clipboard;
     }

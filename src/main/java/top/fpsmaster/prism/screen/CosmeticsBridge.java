@@ -78,6 +78,10 @@ public interface CosmeticsBridge {
         return false;
     }
 
+    /** Opens the FPSMaster sign-in screen. Called from the purchase button while signed out. */
+    default void openSignIn() {
+    }
+
     default boolean purchasePending() {
         return false;
     }

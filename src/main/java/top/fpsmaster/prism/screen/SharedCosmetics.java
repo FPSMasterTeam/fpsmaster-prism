@@ -374,13 +374,18 @@ public final class SharedCosmetics {
                     Chrome.ButtonStyle.PRIMARY)) bridge.equipItem(item.id());
             return;
         }
-        String label = bridge.signedIn()
+        boolean signedIn = bridge.signedIn();
+        String label = signedIn
                 ? bridge.i18n("cosmetics.buy") + "  ·  " + price(bridge, item)
                 : bridge.i18n("cosmetics.login.required");
+        // 未登录时这个按钮以前是死的（点了没反应），现在直接把人送去登录界面。
         if (Chrome.button(ui, x, y, w, 18f, label,
-                bridge.signedIn() ? Chrome.ButtonStyle.PRIMARY : Chrome.ButtonStyle.DEFAULT)
-                && bridge.signedIn()) {
-            bridge.purchaseItem(item.id());
+                signedIn ? Chrome.ButtonStyle.PRIMARY : Chrome.ButtonStyle.DEFAULT)) {
+            if (signedIn) {
+                bridge.purchaseItem(item.id());
+            } else {
+                bridge.openSignIn();
+            }
         }
     }
 

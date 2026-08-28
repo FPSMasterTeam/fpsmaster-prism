@@ -105,6 +105,26 @@ public interface MenuBridge {
         return false;
     }
 
+    /**
+     * FPSMaster 产品账号（不是 Minecraft 账号）。默认 false + 空实现，宿主没接就不出这一行，
+     * 免得点了没反应。
+     */
+    default boolean showFpsAccount() {
+        return false;
+    }
+
+    default boolean fpsSignedIn() {
+        return false;
+    }
+
+    default String fpsAccountName() {
+        return "";
+    }
+
+    /** 打开 FPSMaster 账号登录界面。 */
+    default void openFpsSignIn() {
+    }
+
     final class AccountRow {
         public final String id;
         public final String name;

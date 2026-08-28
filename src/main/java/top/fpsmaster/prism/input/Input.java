@@ -41,6 +41,16 @@ public interface Input {
 
     String typedChars();
 
+    /**
+     * Same characters as {@link #typedChars()}, but taken out of the frame: whoever reads them
+     * first is the only reader.
+     *
+     * <p>Text fields must use this. {@link #typedChars()} hands the same batch to every caller,
+     * so two fields drawn in the same frame both append it — the player types into one box and
+     * the other silently grows the same characters.
+     */
+    String consumeTypedChars();
+
     String clipboard();
 
     void setClipboard(String text);

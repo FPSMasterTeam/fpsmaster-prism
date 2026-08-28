@@ -131,7 +131,9 @@ public final class SharedAccountOverlay {
         float y = SharedMainMenu.CHIP_Y + SharedMainMenu.CHIP_H + 4f + (1f - popT) * 4f;
         float w = 148f;
         float rowH = 22f;
-        float h = 3f + rows.size() * rowH + 4.5f + rowH * 2f + 3f;
+        boolean fpsRow = bridge.showFpsAccount();
+        float h = 3f + rows.size() * rowH + 4.5f + rowH * 2f + 3f
+                + (fpsRow ? 4.5f + rowH : 0f);
         ui.canvas().pushAlpha(Math.max(0.05f, popT));
         Chrome.panel(ui, x, y, w, h);
         float rowY = y + 3f;
@@ -149,6 +151,15 @@ public final class SharedAccountOverlay {
         rowY += rowH;
         if (drawAdd(ui, x, rowY, w, rowH, "offline", bridge.i18n("mainmenu.account.offline.add"), dt) && popOpen) {
             openOffline();
+        }
+        if (fpsRow) {
+            rowY += rowH;
+            Chrome.hairlineH(ui, x + 7f, rowY + 2f, w - 14f);
+            rowY += 4.5f;
+            if (drawFpsRow(ui, bridge, x, rowY, w, rowH, dt) && popOpen) {
+                popOpen = false;
+                bridge.openFpsSignIn();
+            }
         }
         ui.canvas().popAlpha();
         float chipW = SharedMainMenu.chipWidth(ui, bridge);
@@ -205,6 +216,36 @@ public final class SharedAccountOverlay {
                 hover ? ui.theme().textPrimary() : ui.theme().textSecondary());
         ui.canvas().drawString(ui.font(13), label, x + 27f, rowY + 7f,
                 hover ? ui.theme().textPrimary() : ui.theme().textSecondary());
+        return ui.clicked(x + 3f, rowY, w - 6f, rowH);
+    }
+
+    /**
+     * 「FPSMaster 账号」那一行：已登录显示昵称，未登录是一条去登录界面的入口。它和上面的
+     * Minecraft 账号列表是两码事，所以隔了一条分隔线。
+     */
+    private boolean drawFpsRow(UiFrame ui, MenuBridge bridge, float x, float rowY, float w, float rowH,
+                               float dt) {
+        boolean hover = ui.hovered(x + 3f, rowY, w - 6f, rowH);
+        float t = hoverT("fps", hover, dt);
+        if (t > 0.01f) {
+            ui.canvas().fillRoundRect(x + 3f, rowY, w - 6f, rowH, 5f, Argb.mulAlpha(ui.theme().layerHover(), t));
+        }
+        boolean signedIn = bridge.fpsSignedIn();
+        String name = bridge.fpsAccountName();
+        if (name == null || name.isEmpty()) {
+            name = bridge.i18n("signin.account.unknown");
+        }
+        float boxX = x + 8f;
+        float boxY = rowY + 4f;
+        ui.canvas().fillRoundRect(boxX, boxY, 14f, 14f, 4f,
+                signedIn ? ui.theme().accent() : ui.theme().glass());
+        GlyphIcons.draw(ui, signedIn ? "check" : "plus", boxX + 3.5f, boxY + 3.5f, 7f,
+                signedIn ? ui.theme().accentText() : ui.theme().textSecondary());
+        ui.canvas().drawString(ui.font(13),
+                signedIn ? name : bridge.i18n("mainmenu.account.fps.signin"), x + 27f, rowY + 3f,
+                hover ? ui.theme().textPrimary() : ui.theme().textSecondary());
+        ui.canvas().drawString(ui.font(10), bridge.i18n("mainmenu.account.fps"), x + 27f, rowY + 12f,
+                ui.theme().textDisabled());
         return ui.clicked(x + 3f, rowY, w - 6f, rowH);
     }
 
@@ -273,7 +314,8 @@ public final class SharedAccountOverlay {
         ui.canvas().drawString(ui.font(12), bridge.i18n("mainmenu.account.ms.desc"),
                 x + 13f, y + 24f, ui.theme().textSecondary());
         String code = bridge.microsoftCode();
-        if (code == null || code.isEmpty()) {
+        boolean hasCode = code != null && !code.isEmpty();
+        if (!hasCode) {
             if (bridge.microsoftBusy()) {
                 code = "····";
             } else if (bridge.microsoftHasUrl()) {
@@ -289,7 +331,7 @@ public final class SharedAccountOverlay {
         FontHandle codeFont = ui.font(16);
         ui.canvas().drawString(codeFont, code, x + (w - codeFont.measure(code)) / 2f, codeY + 6f,
                 ui.theme().textPrimary());
-        if (!bridge.microsoftCode().isEmpty() && ui.clicked(x + 13f, codeY, w - 26f, 22f)) {
+        if (hasCode && ui.clicked(x + 13f, codeY, w - 26f, 22f)) {
             bridge.copyMicrosoftCode();
         }
         String status = bridge.microsoftError();
