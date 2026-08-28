@@ -43,6 +43,21 @@ public final class RecordingCanvas implements Canvas {
 
     public void drawString(FontHandle font, String text, float x, float y, int argb) {
         ops.add("drawString:" + text);
+        // 单独一条带坐标的，不并进上面那条：一大票测试是按 "drawString:xxx" 精确匹配的。
+        // 有了它才能钉住「画在这儿」和「点在那儿」是同一个矩形。
+        ops.add("textAt:" + text + "@" + Math.round(x) + "," + Math.round(y));
+    }
+
+    /** 某段文字这一帧画在哪；没画过返回 null。取第一次出现。 */
+    public float[] textAt(String text) {
+        String prefix = "textAt:" + text + "@";
+        for (String op : ops) {
+            if (op.startsWith(prefix)) {
+                String[] parts = op.substring(prefix.length()).split(",");
+                return new float[] {Float.parseFloat(parts[0]), Float.parseFloat(parts[1])};
+            }
+        }
+        return null;
     }
 
     public void drawImage(ImageHandle image, float x, float y, float w, float h, int tintArgb) {

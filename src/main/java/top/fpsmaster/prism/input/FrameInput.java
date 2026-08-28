@@ -159,6 +159,17 @@ public final class FrameInput implements Input {
         return false;
     }
 
+    /**
+     * 丢掉这一帧的滚轮，不看鼠标在哪。
+     *
+     * <p>模态用的：{@link #consumeWheelDelta} 鼠标不在矩形里就原样留着，而模态要的是
+     * 「这一帧谁都别想拿到滚轮」——宿主把光标报在视口外的时候（拖出窗口、还没收到第一次
+     * 移动）按矩形吸就会漏，底下的列表跟着滚。
+     */
+    public void discardWheel() {
+        wheel = 0;
+    }
+
     public int consumeWheelDelta(float x, float y, float w, float h) {
         if (!Hit.inside(x, y, w, h, mouseX, mouseY)) {
             return 0;

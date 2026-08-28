@@ -82,6 +82,26 @@ public interface CosmeticsBridge {
     default void openSignIn() {
     }
 
+    /**
+     * 当前账号余额，和 {@link Item#price()} 同口径的十进制字符串。空串＝未知或未登录。
+     *
+     * <p>宿主给的是缓存值，可能落后于服务端——所以它只用来显示和「提前劝退」，
+     * 真正的判定在后端。
+     */
+    default String balance() {
+        return "";
+    }
+
+    /**
+     * 提示宿主去刷一次余额。余额不足弹窗每帧调它，所以实现必须自带节流
+     * （宿主侧是 {@code refreshProfileIfStale}），别真的一帧一个请求。
+     *
+     * <p>有了它，玩家开着弹窗切出去在网页上充完值，切回来就能看见余额涨上来、按钮从
+     * 「知道了」变回「确认购买」；没有的话只能退出界面再进一次。
+     */
+    default void refreshBalance() {
+    }
+
     default boolean purchasePending() {
         return false;
     }

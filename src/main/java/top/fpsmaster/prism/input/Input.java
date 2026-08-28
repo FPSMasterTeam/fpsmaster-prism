@@ -21,6 +21,12 @@ public interface Input {
 
     int consumeWheelDelta(float x, float y, float w, float h);
 
+    /**
+     * 丢掉这一帧的滚轮，不看鼠标在哪。模态用的，见
+     * {@link FrameInput#discardWheel()}。
+     */
+    void discardWheel();
+
     void markHovered(Object id, float x, float y, float w, float h);
 
     boolean wasHovered(Object id);

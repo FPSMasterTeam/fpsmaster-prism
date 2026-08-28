@@ -12,6 +12,8 @@ public final class HeadlessHost implements UiHost {
     public final FrameInput input = new FrameInput();
     private final float width;
     private final float height;
+    /** Frozen and settable: anything that ages by wall clock is only testable if the test drives it. */
+    private long nowNanos;
 
     public HeadlessHost(float width, float height) {
         this.width = width;
@@ -39,7 +41,16 @@ public final class HeadlessHost implements UiHost {
     }
 
     public long nowNanos() {
-        return 0L;
+        return nowNanos;
+    }
+
+    /** Moves the clock forward by {@code millis} milliseconds. */
+    public void advanceMillis(long millis) {
+        nowNanos += millis * 1_000_000L;
+    }
+
+    public void setNowNanos(long value) {
+        nowNanos = value;
     }
 
     public boolean blurEnabled() {
