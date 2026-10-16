@@ -120,15 +120,57 @@ class SharedMusicTest {
         assertEquals(1, bridge.logouts);
     }
 
+    @Test
+    void hostWithoutStateShowsLoadingWhileTracksAreEmpty() {
+        HeadlessHost host = new HeadlessHost(500, 320);
+        SharedMusic music = new SharedMusic();
+        MusicTestBridge bridge = new MusicTestBridge();
+        bridge.defaultState = true;
+        frame(host, music, bridge);
+        assertTrue(host.canvas.has("drawString:加载中…"));
+        assertFalse(host.canvas.has("drawString:暂无歌曲"));
+    }
+
+    @Test
+    void hostWithoutStateAsksLoggedOutUserToLogInForPlaylists() {
+        HeadlessHost host = new HeadlessHost(500, 320);
+        SharedMusic music = new SharedMusic();
+        MusicTestBridge bridge = new MusicTestBridge();
+        bridge.defaultState = true;
+        frame(host, music, bridge);
+        clickText(host, "歌单");
+        frame(host, music, bridge);
+        host.canvas.ops.clear();
+        frame(host, music, bridge);
+        assertTrue(host.canvas.has("drawString:登录后查看"));
+        assertFalse(host.canvas.has("drawString:暂无歌单"));
+    }
+
+    @Test
+    void searchHintIgnoresStateLeftByDiscover() {
+        HeadlessHost host = new HeadlessHost(500, 320);
+        SharedMusic music = new SharedMusic();
+        MusicTestBridge bridge = new MusicTestBridge();
+        bridge.state = MusicBridge.ListState.ERROR;
+        frame(host, music, bridge);
+        clickText(host, "搜索");
+        frame(host, music, bridge);
+        host.canvas.ops.clear();
+        frame(host, music, bridge);
+        assertTrue(host.canvas.has("drawString:输入关键字并回车搜索"));
+        assertFalse(host.canvas.has("drawString:重试"));
+    }
+
     private static final class MusicTestBridge implements MusicBridge {
         ListState state = ListState.READY;
+        boolean defaultState;
         String error = "";
         boolean loggedIn;
         int loginStarts;
         int discoverLoads;
         int logouts;
         final List<TrackRow> rows = new java.util.ArrayList<TrackRow>();
-        public ListState tracksState() { return state; }
+        public ListState tracksState() { return defaultState ? MusicBridge.super.tracksState() : state; }
         public String tracksError() { return error; }
         public boolean supportsLogin() { return true; }
         public void startLogin() { loginStarts++; }

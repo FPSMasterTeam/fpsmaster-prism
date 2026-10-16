@@ -85,9 +85,13 @@ public interface MusicBridge {
      * State of {@link #tracks()} (discover, search results, an opened playlist). Hosts set
      * {@link ListState#LOADING} when they start a request and {@link ListState#READY} /
      * {@link ListState#ERROR} / {@link ListState#NEED_LOGIN} when it settles.
+     * <p>
+     * The default is for hosts that do not report state yet: like Prism before 0.2.2 it treats an
+     * empty list as still loading, otherwise those hosts would show "no songs" while a request is
+     * in flight.
      */
     default ListState tracksState() {
-        return ListState.READY;
+        return tracks().isEmpty() ? ListState.LOADING : ListState.READY;
     }
 
     /** User-facing reason when {@link #tracksState()} is {@link ListState#ERROR}. */
@@ -95,9 +99,13 @@ public interface MusicBridge {
         return "";
     }
 
-    /** State of {@link #playlistRows()}; same contract as {@link #tracksState()}. */
+    /**
+     * State of {@link #playlistRows()}; same contract as {@link #tracksState()}. The default, for
+     * hosts that do not report state yet, keeps the pre-0.2.2 behaviour: an empty list while logged
+     * out asks the user to log in instead of claiming there are no playlists.
+     */
     default ListState playlistsState() {
-        return ListState.READY;
+        return !loggedIn() && playlistRows().isEmpty() ? ListState.NEED_LOGIN : ListState.READY;
     }
 
     /** User-facing reason when {@link #playlistsState()} is {@link ListState#ERROR}. */

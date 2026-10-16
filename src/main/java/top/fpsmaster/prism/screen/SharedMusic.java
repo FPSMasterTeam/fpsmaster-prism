@@ -481,11 +481,12 @@ public final class SharedMusic {
         float contentH = Math.max(listH, tracks.size() * TRACK_ROW + 4f);
         float off = scroll.begin(ui, x, listY, w, listH, contentH);
         try {
-            MusicBridge.ListState state = local ? MusicBridge.ListState.READY : bridge.tracksState();
+            // 搜索页还没搜过时没有请求，宿主报的状态与此无关，直接给搜索提示。
+            boolean idleSearch = tab == Tab.SEARCH && source != Source.PLAYLIST && lastQuery.isEmpty();
+            MusicBridge.ListState state = local || idleSearch ? MusicBridge.ListState.READY : bridge.tracksState();
             if (tracks.isEmpty() || state != MusicBridge.ListState.READY) {
                 String empty = local ? tr(bridge, "music.local.empty", "导入 MP3、WAV 或 AIFF 文件")
-                        : tab == Tab.SEARCH && source != Source.PLAYLIST && lastQuery.isEmpty()
-                        ? tr(bridge, "music.search.hint", "输入关键字并回车搜索")
+                        : idleSearch ? tr(bridge, "music.search.hint", "输入关键字并回车搜索")
                         : tr(bridge, "music.list.empty", "暂无歌曲");
                 listMessage(ui, bridge, state, bridge.tracksError(), empty, x, listY + 8f + off, w);
                 return;
