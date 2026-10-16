@@ -1,12 +1,14 @@
 package top.fpsmaster.prism.screen;
 
 import top.fpsmaster.prism.anim.Anim;
+import top.fpsmaster.prism.canvas.FontHandle;
 import top.fpsmaster.prism.icon.GlyphIcons;
 import top.fpsmaster.prism.theme.Argb;
 import top.fpsmaster.prism.theme.Metrics;
 import top.fpsmaster.prism.widget.Chrome;
 import top.fpsmaster.prism.widget.Scroll;
 import top.fpsmaster.prism.widget.TextBox;
+import top.fpsmaster.prism.widget.TextFit;
 import top.fpsmaster.prism.widget.UiFrame;
 
 import java.util.Calendar;
@@ -16,9 +18,22 @@ public final class SharedMusic {
     private static final float NOW_W = 160f;
     private static final int BADGE = 0xFFD9A441;
 
+    private static final float TRACK_ROW = 16f;
+    private static final float PLAYLIST_ROW = 18f;
+
     private enum Tab {DISCOVER, PLAYLISTS, SEARCH, LOCAL}
 
+    /** What filled the track list last, so "Retry" can repeat exactly that request. */
+    private enum Source {DISCOVER, SEARCH, PLAYLIST}
+
     private Tab tab = Tab.DISCOVER;
+    private Source source = Source.DISCOVER;
+    private String lastQuery = "";
+    private int lastPlaylist = -1;
+    private boolean logoutConfirm;
+    private String greeting = "";
+    private boolean greetingQq;
+    private long greetingCheckedAt = Long.MIN_VALUE;
     private final TextBox search = new TextBox();
     private final TextBox qqId = new TextBox();
     private final TextBox qqKey = new TextBox();
@@ -35,7 +50,6 @@ public final class SharedMusic {
         search.setPaintBox(false);
         search.setFontSize(12);
         search.setPadLeft(14f);
-        search.setPlaceholder("搜索歌曲、歌手…");
         qqId.setFontSize(12);
         qqId.setPlaceholder("musicid (uin)");
         qqKey.setFontSize(12);
@@ -43,6 +57,10 @@ public final class SharedMusic {
     }
 
     public boolean cancelOverlay() {
+        if (logoutConfirm) {
+            logoutConfirm = false;
+            return true;
+        }
         if (immersiveLyrics || lyricsOpenT > 0f) {
             immersiveLyrics = false;
             return true;
@@ -62,12 +80,15 @@ public final class SharedMusic {
         float dt = dt(ui);
         lyricsOpenT = Anim.approach(lyricsOpenT, immersiveLyrics ? 1f : 0f, 0.22f, dt);
         if (!discoverRequested) {
-            bridge.loadDiscover();
+            loadDiscover(bridge);
             discoverRequested = true;
         }
         if (loginOpen && bridge.loggedIn()) {
             loginOpen = false;
             bridge.stopLogin();
+        }
+        if (logoutConfirm && !bridge.loggedIn()) {
+            logoutConfirm = false;
         }
         float gw = ui.host().width();
         float gh = ui.host().height();
@@ -90,6 +111,26 @@ public final class SharedMusic {
             return false;
         }
 
+        // 退出登录确认开着时它是模态：底下照常画，但不响应任何输入。
+        boolean inputWas = ui.inputEnabled();
+        if (logoutConfirm) {
+            ui.setInputEnabled(false);
+        }
+        try {
+            if (drawBody(ui, bridge, px, py, pw, ph)) {
+                return true;
+            }
+        } finally {
+            ui.setInputEnabled(inputWas);
+        }
+        if (logoutConfirm) {
+            drawLogoutConfirm(ui, bridge, px, py, pw, ph);
+        }
+        return false;
+    }
+
+    /** @return {@code true} when the close button was clicked */
+    private boolean drawBody(UiFrame ui, MusicBridge bridge, float px, float py, float pw, float ph) {
         drawNow(ui, bridge, px, py, NOW_W, ph);
 
         float clS = 16f;
@@ -208,35 +249,47 @@ public final class SharedMusic {
     }
 
     private void drawSettings(UiFrame ui, MusicBridge bridge, float x, float y, float w, float h) {
-        FontBold.draw(ui, 16, "音乐设置", x + 14f, y + 10f, ui.theme().textPrimary());
-        ui.canvas().drawString(ui.font(11), "播放与歌词", x + 14f, y + 22f, ui.theme().textSecondary());
+        FontBold.draw(ui, 16, tr(bridge, "music.settings.title", "音乐设置"), x + 14f, y + 10f,
+                ui.theme().textPrimary());
+        ui.canvas().drawString(ui.font(11), tr(bridge, "music.settings.subtitle", "播放与歌词"), x + 14f, y + 22f,
+                ui.theme().textSecondary());
 
         float rowX = x + 14f;
         float rowW = w - 28f;
         float rowY = y + 44f;
         settingMode(ui, bridge, rowX, rowY, rowW);
         rowY += 30f;
-        settingSlider(ui, bridge, "歌词字号", Math.round(bridge.lyricFontSize()) + " px",
+        settingSlider(ui, bridge, tr(bridge, "music.settings.lyricsize", "歌词字号"),
+                Math.round(bridge.lyricFontSize()) + " px",
                 rowX, rowY, rowW, (bridge.lyricFontSize() - 10f) / 20f, 0);
         rowY += 30f;
-        settingSlider(ui, bridge, "显示行数", bridge.lyricLines() + " 行",
+        settingSlider(ui, bridge, tr(bridge, "music.settings.lyriclines", "显示行数"),
+                Tr.format(bridge.i18n("music.settings.lines.unit"), "music.settings.lines.unit", "%d 行",
+                        Integer.valueOf(bridge.lyricLines())),
                 rowX, rowY, rowW, (bridge.lyricLines() - 1f) / 4f, 1);
         rowY += 30f;
 
         float half = (rowW - 6f) / 2f;
-        settingToggle(ui, bridge, "桌面歌词", rowX, rowY, half, bridge.lyricsHudEnabled(), 0);
-        settingToggle(ui, bridge, "显示翻译", rowX + half + 6f, rowY, half, bridge.lyricTranslation(), 1);
+        settingToggle(ui, bridge, tr(bridge, "music.settings.hud", "桌面歌词"), rowX, rowY, half,
+                bridge.lyricsHudEnabled(), 0);
+        settingToggle(ui, bridge, tr(bridge, "music.settings.translation", "显示翻译"), rowX + half + 6f, rowY, half,
+                bridge.lyricTranslation(), 1);
         rowY += 30f;
-        settingToggle(ui, bridge, "平滑滚动", rowX, rowY, half, bridge.lyricScroll(), 2);
-        settingToggle(ui, bridge, "歌词背景", rowX + half + 6f, rowY, half, bridge.lyricBackground(), 3);
+        settingToggle(ui, bridge, tr(bridge, "music.settings.smooth", "平滑滚动"), rowX, rowY, half,
+                bridge.lyricScroll(), 2);
+        settingToggle(ui, bridge, tr(bridge, "music.settings.background", "歌词背景"), rowX + half + 6f, rowY, half,
+                bridge.lyricBackground(), 3);
     }
 
     private void settingMode(UiFrame ui, MusicBridge bridge, float x, float y, float w) {
         ui.canvas().fillRoundRect(x, y, w, 24f, 6f, ui.theme().layer());
-        ui.canvas().drawString(ui.font(12), "播放模式", x + 8f, Chrome.textY(y, 24f, ui.font(12)),
-                ui.theme().textPrimary());
+        ui.canvas().drawString(ui.font(12), tr(bridge, "music.settings.mode", "播放模式"), x + 8f,
+                Chrome.textY(y, 24f, ui.font(12)), ui.theme().textPrimary());
         MusicBridge.PlaybackMode[] modes = MusicBridge.PlaybackMode.values();
-        String[] labels = new String[]{"顺序", "乱序", "单曲"};
+        String[] labels = new String[]{
+                tr(bridge, "music.mode.sequential", "顺序"),
+                tr(bridge, "music.mode.shuffle", "乱序"),
+                tr(bridge, "music.mode.repeatone", "单曲")};
         float bw = 38f;
         float bx = x + w - 8f - bw * modes.length;
         for (int i = 0; i < modes.length; i++) {
@@ -298,14 +351,15 @@ public final class SharedMusic {
                 ui.theme().textPrimary());
         if (bridge.supportsLogin() && ui.clicked(pillX, rowY, pillW, rowH)) {
             if (bridge.loggedIn()) {
-                bridge.logout();
+                // 单击胶囊不能直接退出：玩家多半只是想看看账号状态，退出后得重新扫码。
+                logoutConfirm = true;
             } else {
                 loginOpen = true;
                 bridge.startLogin();
             }
         }
 
-        String[] labels = {"网易云", "QQ 音乐"};
+        String[] labels = {tr(bridge, "music.source.netease", "网易云"), tr(bridge, "music.source.qq", "QQ 音乐")};
         float segW = ui.font(12).measure(labels[0]) + ui.font(12).measure(labels[1]) + 32f;
         float segX = pillX - 8f - segW;
         ui.canvas().fillRoundRect(segX, rowY, segW, rowH, rowH / 2f, ui.theme().layer());
@@ -321,7 +375,9 @@ public final class SharedMusic {
             if (ui.clicked(ox, rowY, ow, rowH) && !selected) {
                 bridge.setQq(i == 1);
                 if (tab == Tab.DISCOVER) {
-                    bridge.loadDiscover();
+                    loadDiscover(bridge);
+                } else if (tab == Tab.PLAYLISTS) {
+                    bridge.loadPlaylists();
                 }
             }
             ox += ow;
@@ -331,7 +387,11 @@ public final class SharedMusic {
     private void drawToolbar(UiFrame ui, MusicBridge bridge, float x, float y, float w) {
         float h = Metrics.SEARCH_H;
         Tab[] tabs = new Tab[]{Tab.DISCOVER, Tab.PLAYLISTS, Tab.SEARCH, Tab.LOCAL};
-        String[] labels = new String[]{"发现", "歌单", "搜索", "本地"};
+        String[] labels = new String[]{
+                tr(bridge, "music.tab.discover", "发现"),
+                tr(bridge, "music.tab.playlists", "歌单"),
+                tr(bridge, "music.tab.search", "搜索"),
+                tr(bridge, "music.tab.local", "本地")};
         float ox = x + 14f;
         float tw = 42f;
         ui.canvas().fillRoundRect(ox, y, tw * tabs.length, h, h / 2f, ui.theme().layer());
@@ -348,7 +408,7 @@ public final class SharedMusic {
             if (ui.clicked(ox + i * tw, y, tw, h) && tab != tabs[i]) {
                 tab = tabs[i];
                 if (tab == Tab.DISCOVER) {
-                    bridge.loadDiscover();
+                    loadDiscover(bridge);
                 } else if (tab == Tab.PLAYLISTS) {
                     bridge.loadPlaylists();
                 }
@@ -358,89 +418,203 @@ public final class SharedMusic {
         float sx = x + w - 14f - sw;
         Chrome.searchBox(ui, sx, y, sw, h, search.focused());
         GlyphIcons.draw(ui, "search", sx + 5f, y + (h - 7f) / 2f, 7f, ui.theme().textDisabled());
+        search.setPlaceholder(tr(bridge, "music.search.placeholder", "搜索歌曲、歌手…"));
         search.draw(ui, sx, y, sw, h);
-        if (search.focused() && ui.input().consumeKey(top.fpsmaster.prism.input.Keys.ENTER)) {
+        if (search.focused() && ui.inputEnabled()
+                && ui.input().consumeKey(top.fpsmaster.prism.input.Keys.ENTER)) {
             tab = Tab.SEARCH;
-            bridge.search(search.text());
+            source = Source.SEARCH;
+            lastQuery = search.text();
+            bridge.search(lastQuery);
         }
     }
 
     private void drawList(UiFrame ui, MusicBridge bridge, float x, float y, float w, float h) {
         if (tab == Tab.PLAYLISTS) {
             List<MusicBridge.PlaylistRow> rows = bridge.playlistRows();
-            float contentH = Math.max(h, rows.size() * 18f + 8f);
+            MusicBridge.ListState state = bridge.playlistsState();
+            float contentH = Math.max(h, rows.size() * PLAYLIST_ROW + 8f);
             float off = scroll.begin(ui, x, y, w, h, contentH);
-            if (rows.isEmpty()) {
-                ui.canvas().drawString(ui.font(13), bridge.loggedIn() ? "暂无歌单" : bridge.i18n("music.notloggedin"),
-                        x, y + 8f + off, ui.theme().textDisabled());
-            }
-            for (int i = 0; i < rows.size(); i++) {
-                MusicBridge.PlaylistRow row = rows.get(i);
-                float ry = y + 2f + i * 18f + off;
-                boolean hover = ui.hovered(x, ry, w, 17f);
-                if (hover) {
-                    ui.canvas().fillRoundRect(x, ry, w, 17f, 4f, ui.theme().layerHover());
+            try {
+                if (rows.isEmpty() || state != MusicBridge.ListState.READY) {
+                    listMessage(ui, bridge, state, bridge.playlistsError(),
+                            tr(bridge, "music.playlists.empty", "暂无歌单"), x, y + 8f + off, w);
+                } else {
+                    // 只画视口内的行：歌单可能上千条，全量画每帧要测量、截断上千个字符串。
+                    int first = Math.max(0, (int) Math.floor((-off - 2f) / PLAYLIST_ROW));
+                    int last = Math.min(rows.size(), first + (int) Math.ceil(h / PLAYLIST_ROW) + 2);
+                    FontHandle nameFont = ui.font(12);
+                    FontHandle countFont = ui.font(11);
+                    for (int i = first; i < last; i++) {
+                        MusicBridge.PlaylistRow row = rows.get(i);
+                        float ry = y + 2f + i * PLAYLIST_ROW + off;
+                        boolean hover = ui.hovered(x, ry, w, 17f);
+                        if (hover) {
+                            ui.canvas().fillRoundRect(x, ry, w, 17f, 4f, ui.theme().layerHover());
+                        }
+                        ui.canvas().drawString(nameFont, ellipsize(nameFont, row.name, w - 40f),
+                                x + 6f, Chrome.textY(ry, 17f, nameFont), ui.theme().textPrimary());
+                        ui.canvas().drawString(countFont, row.count, x + w - 8f - TextFit.width(countFont, row.count),
+                                Chrome.textY(ry, 17f, countFont), ui.theme().textDisabled());
+                        if (ui.clicked(x, ry, w, 17f)) {
+                            openPlaylist(bridge, i);
+                        }
+                    }
                 }
-                ui.canvas().drawString(ui.font(12), ellipsize(ui.font(12), row.name, w - 40f),
-                        x + 6f, Chrome.textY(ry, 17f, ui.font(12)), ui.theme().textPrimary());
-                ui.canvas().drawString(ui.font(11), row.count, x + w - 8f - ui.font(11).measure(row.count),
-                        Chrome.textY(ry, 17f, ui.font(11)), ui.theme().textDisabled());
-                if (ui.clicked(x, ry, w, 17f)) {
-                    bridge.openPlaylist(i);
-                    tab = Tab.SEARCH;
-                }
+            } finally {
+                scroll.end(ui);
             }
-            scroll.end(ui);
             return;
         }
-        List<MusicBridge.TrackRow> tracks = tab == Tab.LOCAL ? bridge.localTracks() : bridge.tracks();
-        if (tab == Tab.LOCAL) {
-            if (Chrome.button(ui, x + w - 64f, y - 4f, 64f, 15f, "导入音乐", Chrome.ButtonStyle.DEFAULT)) {
+        boolean local = tab == Tab.LOCAL;
+        List<MusicBridge.TrackRow> tracks = local ? bridge.localTracks() : bridge.tracks();
+        if (local) {
+            if (Chrome.button(ui, x + w - 64f, y - 4f, 64f, 15f, tr(bridge, "music.local.import", "导入音乐"),
+                    Chrome.ButtonStyle.DEFAULT)) {
                 bridge.importLocalMusic();
             }
         }
-        ui.canvas().drawString(ui.font(12), tab == Tab.LOCAL ? "本地音乐" : bridge.listTitle(),
+        ui.canvas().drawString(ui.font(12), local ? tr(bridge, "music.local.title", "本地音乐") : bridge.listTitle(),
                 x, y - 1f, ui.theme().textDisabled());
         float listY = y + 12f;
         float listH = h - 12f;
-        float contentH = Math.max(listH, tracks.size() * 16f + 4f);
+        float contentH = Math.max(listH, tracks.size() * TRACK_ROW + 4f);
         float off = scroll.begin(ui, x, listY, w, listH, contentH);
-        if (tracks.isEmpty()) {
-            String empty = tab == Tab.SEARCH ? "输入关键字并回车搜索"
-                    : tab == Tab.LOCAL ? "导入 MP3、WAV 或 AIFF 文件" : "加载中…";
-            ui.canvas().drawString(ui.font(13), empty,
-                    x, listY + 8f + off, ui.theme().textDisabled());
+        try {
+            MusicBridge.ListState state = local ? MusicBridge.ListState.READY : bridge.tracksState();
+            if (tracks.isEmpty() || state != MusicBridge.ListState.READY) {
+                String empty = local ? tr(bridge, "music.local.empty", "导入 MP3、WAV 或 AIFF 文件")
+                        : tab == Tab.SEARCH && source != Source.PLAYLIST && lastQuery.isEmpty()
+                        ? tr(bridge, "music.search.hint", "输入关键字并回车搜索")
+                        : tr(bridge, "music.list.empty", "暂无歌曲");
+                listMessage(ui, bridge, state, bridge.tracksError(), empty, x, listY + 8f + off, w);
+                return;
+            }
+            // 虚拟列表：只绘制、命中视口内的行（歌单最多上千首）。
+            int first = Math.max(0, (int) Math.floor(-off / TRACK_ROW));
+            int last = Math.min(tracks.size(), first + (int) Math.ceil(listH / TRACK_ROW) + 2);
+            FontHandle nameFont = ui.font(12);
+            FontHandle smallFont = ui.font(10);
+            for (int i = first; i < last; i++) {
+                MusicBridge.TrackRow row = tracks.get(i);
+                float ry = listY + i * TRACK_ROW + off;
+                boolean hover = ui.hovered(x, ry, w, 15f);
+                if (hover) {
+                    ui.canvas().fillRoundRect(x, ry, w, 15f, 4f, ui.theme().layerHover());
+                }
+                String n = (i + 1) + "  " + row.name;
+                ui.canvas().drawString(nameFont, ellipsize(nameFont, n, w - 80f),
+                        x + 4f, Chrome.textY(ry, 15f, nameFont), ui.theme().textPrimary());
+                if (row.vip) {
+                    ui.canvas().drawString(smallFont, "VIP", x + w - 52f, Chrome.textY(ry, 15f, smallFont), BADGE);
+                }
+                ui.canvas().drawString(smallFont, row.duration, x + w - 6f - TextFit.width(smallFont, row.duration),
+                        Chrome.textY(ry, 15f, smallFont), ui.theme().textDisabled());
+                if (ui.clicked(x, ry, w, 15f)) {
+                    if (local) bridge.playLocal(i);
+                    else bridge.play(i);
+                }
+            }
+        } finally {
+            scroll.end(ui);
         }
-        for (int i = 0; i < tracks.size(); i++) {
-            MusicBridge.TrackRow row = tracks.get(i);
-            float ry = listY + i * 16f + off;
-            boolean hover = ui.hovered(x, ry, w, 15f);
-            if (hover) {
-                ui.canvas().fillRoundRect(x, ry, w, 15f, 4f, ui.theme().layerHover());
-            }
-            String n = (i + 1) + "  " + row.name;
-            ui.canvas().drawString(ui.font(12), ellipsize(ui.font(12), n, w - 80f),
-                    x + 4f, Chrome.textY(ry, 15f, ui.font(12)), ui.theme().textPrimary());
-            if (row.vip) {
-                ui.canvas().drawString(ui.font(10), "VIP", x + w - 52f, Chrome.textY(ry, 15f, ui.font(10)), BADGE);
-            }
-            ui.canvas().drawString(ui.font(10), row.duration, x + w - 6f - ui.font(10).measure(row.duration),
-                    Chrome.textY(ry, 15f, ui.font(10)), ui.theme().textDisabled());
-            if (ui.clicked(x, ry, w, 15f)) {
-                if (tab == Tab.LOCAL) bridge.playLocal(i);
-                else bridge.play(i);
+    }
+
+    /** Placeholder for a list that is loading, empty, failed or needs login, with its action button. */
+    private void listMessage(UiFrame ui, MusicBridge bridge, MusicBridge.ListState state, String error,
+                             String emptyText, float x, float y, float w) {
+        FontHandle font = ui.font(13);
+        String text;
+        String action = null;
+        int color = ui.theme().textDisabled();
+        if (state == MusicBridge.ListState.LOADING) {
+            text = tr(bridge, "music.list.loading", "加载中…");
+        } else if (state == MusicBridge.ListState.NEED_LOGIN) {
+            text = tr(bridge, "music.list.needlogin", "登录后查看");
+            action = bridge.supportsLogin() ? tr(bridge, "music.login", "登录") : null;
+        } else if (state == MusicBridge.ListState.ERROR) {
+            String reason = error == null ? "" : error.trim();
+            text = reason.isEmpty() ? tr(bridge, "music.list.error", "加载失败") : reason;
+            action = tr(bridge, "music.list.retry", "重试");
+            color = ui.theme().danger();
+        } else {
+            text = emptyText;
+        }
+        ui.canvas().drawString(font, ellipsize(font, text, w - 8f), x, y, color);
+        if (action == null) {
+            return;
+        }
+        float bw = Math.max(48f, TextFit.width(ui.font(12), action) + 16f);
+        if (Chrome.button(ui, x, y + 14f, bw, 16f, action, Chrome.ButtonStyle.DEFAULT)) {
+            if (state == MusicBridge.ListState.NEED_LOGIN) {
+                loginOpen = true;
+                bridge.startLogin();
+            } else if (tab == Tab.PLAYLISTS) {
+                bridge.loadPlaylists();
+            } else {
+                retryTracks(bridge);
             }
         }
-        scroll.end(ui);
+    }
+
+    private void loadDiscover(MusicBridge bridge) {
+        source = Source.DISCOVER;
+        bridge.loadDiscover();
+    }
+
+    private void openPlaylist(MusicBridge bridge, int index) {
+        source = Source.PLAYLIST;
+        lastPlaylist = index;
+        bridge.openPlaylist(index);
+        tab = Tab.SEARCH;
+    }
+
+    /** Repeat whatever filled the track list last. */
+    private void retryTracks(MusicBridge bridge) {
+        if (source == Source.SEARCH) {
+            bridge.search(lastQuery);
+        } else if (source == Source.PLAYLIST && lastPlaylist >= 0) {
+            bridge.openPlaylist(lastPlaylist);
+        } else {
+            bridge.loadDiscover();
+        }
+    }
+
+    private void drawLogoutConfirm(UiFrame ui, MusicBridge bridge, float px, float py, float pw, float ph) {
+        ui.canvas().fillRect(px, py, pw, ph, 0x99000000);
+        float w = 200f;
+        float h = 64f;
+        float x = px + (pw - w) / 2f;
+        float y = py + (ph - h) / 2f;
+        Chrome.panel(ui, x, y, w, h);
+        String source = bridge.qq() ? tr(bridge, "music.source.qq", "QQ 音乐") : tr(bridge, "music.source.netease", "网易云");
+        String title = Tr.format(bridge.i18n("music.logout.confirm"), "music.logout.confirm", "退出%s账号？", source);
+        ui.canvas().drawString(ui.font(13), ellipsize(ui.font(13), title, w - 20f), x + 10f, y + 10f,
+                ui.theme().textPrimary());
+        float bw = 64f;
+        float by = y + h - 26f;
+        if (Chrome.button(ui, x + w - 10f - bw, by, bw, 16f, tr(bridge, "music.logout", "退出登录"),
+                Chrome.ButtonStyle.DANGER_FILL)) {
+            logoutConfirm = false;
+            bridge.logout();
+        } else if (Chrome.button(ui, x + w - 16f - bw * 2f, by, bw, 16f, tr(bridge, "music.cancel", "取消"),
+                Chrome.ButtonStyle.GHOST)) {
+            logoutConfirm = false;
+        }
+    }
+
+    private static String tr(MusicBridge bridge, String key, String fallback) {
+        return Tr.of(bridge.i18n(key), key, fallback);
     }
 
     private void drawImmersiveLyrics(UiFrame ui, MusicBridge bridge, float x, float y, float w, float h,
                                      float dt, float openT) {
         float eased = Anim.cssEase(openT);
         ui.pushClip(x + 1f, y + 1f, w - 2f, h - 2f);
-        ui.canvas().pushTransform();
+        // UiFrame 的变换：滑入过程中按钮的命中区域跟着画面一起移动。
+        ui.pushTransform();
         try {
-        ui.canvas().translate(0f, (1f - eased) * h);
+        ui.translate(0f, (1f - eased) * h);
         ui.canvas().fillRoundRect(x + 1f, y + 1f, w - 2f, h - 2f, Metrics.PANEL_RADIUS,
                 Argb.lerp(ui.theme().glass(), ui.theme().accentSoft(), 0.18f));
         float backX = x + 12f;
@@ -467,7 +641,7 @@ public final class SharedMusic {
         GlyphIcons.draw(ui, bridge.playing() && !bridge.paused() ? "pause" : "play",
                 x + 20f, barY - 1f, 8f, ui.theme().textPrimary());
         } finally {
-        ui.canvas().popTransform();
+        ui.popTransform();
         ui.popClip();
         }
     }
@@ -486,7 +660,8 @@ public final class SharedMusic {
         float x = px + (pw - w) / 2f;
         float y = py + (ph - h) / 2f;
         Chrome.panel(ui, x, y, w, h);
-        FontBold.draw(ui, 16, (bridge.qq() ? "QQ 音乐" : "网易云") + " 登录",
+        String sourceName = bridge.qq() ? tr(bridge, "music.source.qq", "QQ 音乐") : tr(bridge, "music.source.netease", "网易云");
+        FontBold.draw(ui, 16, Tr.format(bridge.i18n("music.login.title"), "music.login.title", "%s 登录", sourceName),
                 x + 12f, y + 10f, ui.theme().textPrimary());
         float closeX = x + w - 22f;
         if (Chrome.button(ui, closeX, y + 7f, 14f, 14f, "×", Chrome.ButtonStyle.GHOST)) {
@@ -503,7 +678,7 @@ public final class SharedMusic {
         ui.canvas().drawString(ui.font(11), ellipsize(ui.font(11), status, w - 24f),
                 x + 12f, qy + qr + 7f, ui.theme().textSecondary());
         if (Chrome.button(ui, x + (w - 64f) / 2f, qy + qr + 16f, 64f, 15f,
-                "刷新二维码", Chrome.ButtonStyle.DEFAULT)) {
+                tr(bridge, "music.login.refreshqr", "刷新二维码"), Chrome.ButtonStyle.DEFAULT)) {
             bridge.startLogin();
         }
         if (bridge.qq()) {
@@ -513,23 +688,36 @@ public final class SharedMusic {
             qqId.draw(ui, fieldX, firstY, fieldW, 18f);
             qqKey.draw(ui, fieldX, firstY + 22f, fieldW, 18f);
             if (Chrome.button(ui, fieldX, firstY + 44f, fieldW, 16f,
-                    "Cookie 登录", Chrome.ButtonStyle.PRIMARY)) {
+                    tr(bridge, "music.login.cookie", "Cookie 登录"), Chrome.ButtonStyle.PRIMARY)) {
                 bridge.submitQqCookie(qqId.text(), qqKey.text());
             }
         }
     }
 
-    private static String greeting(MusicBridge bridge) {
-        int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
-        String time = hour < 6 ? "夜深了" : hour < 12 ? "早上好" : hour < 18 ? "下午好" : "晚上好";
-        return time + "，" + (bridge.qq() ? "Q音听友" : "云村居民");
+    /** Cached for a minute: Calendar.getInstance() and the concatenation ran every frame. */
+    private String greeting(MusicBridge bridge) {
+        long now = System.currentTimeMillis();
+        if (bridge.qq() != greetingQq || now - greetingCheckedAt >= 60_000L || now < greetingCheckedAt) {
+            greetingCheckedAt = now;
+            greetingQq = bridge.qq();
+            int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+            String time = hour < 6 ? tr(bridge, "music.greeting.night", "夜深了")
+                    : hour < 12 ? tr(bridge, "music.greeting.morning", "早上好")
+                    : hour < 18 ? tr(bridge, "music.greeting.afternoon", "下午好")
+                    : tr(bridge, "music.greeting.evening", "晚上好");
+            String who = greetingQq ? tr(bridge, "music.greeting.qq", "Q音听友")
+                    : tr(bridge, "music.greeting.netease", "云村居民");
+            greeting = time + tr(bridge, "music.greeting.sep", "，") + who;
+        }
+        return greeting;
     }
 
     private static String greetingSub(MusicBridge bridge) {
         if (bridge.qq()) {
-            return "热歌榜已更新";
+            return tr(bridge, "music.sub.qq", "热歌榜已更新");
         }
-        return bridge.loggedIn() ? "每日推荐已更新" : "登录后查看每日推荐";
+        return bridge.loggedIn() ? tr(bridge, "music.sub.daily", "每日推荐已更新")
+                : tr(bridge, "music.sub.login", "登录后查看每日推荐");
     }
 
     private static MusicBridge.PlaybackMode nextMode(MusicBridge.PlaybackMode mode) {
@@ -549,22 +737,11 @@ public final class SharedMusic {
             return "0:00";
         }
         long total = ms / 1000L;
-        return (total / 60L) + ":" + String.format("%02d", (int) (total % 60L));
+        int sec = (int) (total % 60L);
+        return (total / 60L) + (sec < 10 ? ":0" : ":") + sec;
     }
 
     private static String ellipsize(top.fpsmaster.prism.canvas.FontHandle font, String text, float max) {
-        if (text == null) {
-            return "";
-        }
-        if (font.measure(text) <= max) {
-            return text;
-        }
-        for (int i = text.length() - 1; i > 0; i--) {
-            String cut = text.substring(0, i) + "...";
-            if (font.measure(cut) <= max) {
-                return cut;
-            }
-        }
-        return "...";
+        return TextFit.ellipsize(font, text, max);
     }
 }
