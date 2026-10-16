@@ -1,7 +1,13 @@
 package top.fpsmaster.prism.icon;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 /** Stable resource keys shared by Nova's kebab-case and Edge's CamelCase module identities. */
 public final class ModuleIcons {
+    /** Module ids are a small fixed set; ClickGUI asks for every visible module every frame. */
+    private static final Map<String, String> CACHE = new ConcurrentHashMap<String, String>();
+
     private ModuleIcons() {
     }
 
@@ -9,6 +15,16 @@ public final class ModuleIcons {
         if (moduleId == null || moduleId.isEmpty()) {
             return "modules/client-settings";
         }
+        String cached = CACHE.get(moduleId);
+        if (cached != null) {
+            return cached;
+        }
+        String resource = compute(moduleId);
+        CACHE.put(moduleId, resource);
+        return resource;
+    }
+
+    private static String compute(String moduleId) {
         StringBuilder normalized = new StringBuilder(moduleId.length() + 8);
         for (int i = 0; i < moduleId.length(); i++) {
             char current = moduleId.charAt(i);

@@ -4,6 +4,7 @@ import top.fpsmaster.prism.anim.Anim;
 import top.fpsmaster.prism.canvas.FontHandle;
 import top.fpsmaster.prism.theme.Argb;
 import top.fpsmaster.prism.widget.Chrome;
+import top.fpsmaster.prism.widget.TextFit;
 import top.fpsmaster.prism.widget.UiFrame;
 
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -94,18 +95,7 @@ public final class NotificationCenter {
     }
 
     private static String ellipsize(FontHandle font, String text, float maxWidth) {
-        String value = text == null ? "" : text;
-        if (font.measure(value) <= maxWidth) {
-            return value;
-        }
-        String suffix = "...";
-        for (int i = value.length() - 1; i > 0; i--) {
-            String candidate = value.substring(0, i) + suffix;
-            if (font.measure(candidate) <= maxWidth) {
-                return candidate;
-            }
-        }
-        return suffix;
+        return TextFit.ellipsize(font, text, maxWidth);
     }
 
     private static final class Entry {

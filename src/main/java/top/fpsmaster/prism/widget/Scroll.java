@@ -25,7 +25,7 @@ public final class Scroll {
      * @return current offset (0 = top, negative = scrolled down)
      */
     public float begin(UiFrame ui, float x, float y, float w, float viewH, float contentH) {
-        int wheel = ui.input().consumeWheelDelta(x, y, w, viewH);
+        int wheel = ui.consumeWheel(x, y, w, viewH);
         if (wheel != 0) {
             offset += wheel > 0 ? 24f : -24f;
         }
