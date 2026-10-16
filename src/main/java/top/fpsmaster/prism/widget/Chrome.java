@@ -185,8 +185,8 @@ public final class Chrome {
      * Draws a slider and, while dragged, returns the new 0..1 value.
      */
     public static float slider(UiFrame ui, Object dragId, float x, float y, float width, float t) {
-        if (ui.input().beginDrag(dragId, 0, x, y, width, Metrics.SLIDER_H) || ui.input().isDragging(dragId)) {
-            t = clamp01((ui.input().mouseX() - x) / width);
+        if (ui.beginDrag(dragId, x, y, width, Metrics.SLIDER_H)) {
+            t = clamp01((ui.localMouseX() - x) / width);
             if (!ui.input().isButtonDown(0)) {
                 ui.input().releaseDrag(dragId);
             }

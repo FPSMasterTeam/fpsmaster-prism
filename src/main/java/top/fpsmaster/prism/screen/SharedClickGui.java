@@ -10,8 +10,10 @@ import top.fpsmaster.prism.theme.Metrics;
 import top.fpsmaster.prism.widget.Chrome;
 import top.fpsmaster.prism.widget.Scroll;
 import top.fpsmaster.prism.widget.TextBox;
+import top.fpsmaster.prism.widget.TextFit;
 import top.fpsmaster.prism.widget.UiFrame;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,12 +36,16 @@ public final class SharedClickGui {
     public String expandedId;
     public final TextBox search = new TextBox();
     public final Scroll scroll = new Scroll("clickgui.mods");
-    private final Map<String, TextBox> fields = new HashMap<String, TextBox>();
-    private final Map<String, Float> knobs = new HashMap<String, Float>();
-    private final Map<String, Float> expandH = new HashMap<String, Float>();
-    private final Map<String, Boolean> collapsedGroups = new HashMap<String, Boolean>();
-    private String expandedColor;
-    private String expandedChoice;
+    /**
+     * Per-setting UI state, keyed moduleId → settingId. Two lookups instead of a concatenated
+     * {@code moduleId + "." + settingId} key: that string was rebuilt for every setting every frame.
+     */
+    private final Map<String, Map<String, SettingState>> settingStates = new HashMap<String, Map<String, SettingState>>();
+    /** Module switch knob and expand height, index 0 / 1, keyed by module id. Mutable to avoid boxing. */
+    private final Map<String, float[]> moduleStates = new HashMap<String, float[]>();
+    private final Map<String, Map<String, Boolean>> collapsedGroups = new HashMap<String, Map<String, Boolean>>();
+    private SettingState expandedColor;
+    private SettingState expandedChoice;
     private String captureModule;
     private String captureSetting;
     private int captureListIndex = -1;
@@ -101,16 +107,26 @@ public final class SharedClickGui {
         boolean xform = animateOpen && scale < 0.999f;
         Canvas canvas = ui.canvas();
         if (xform) {
-            canvas.pushTransform();
-            canvas.translate(gw * 0.5f, gh * 0.5f);
-            canvas.scale(scale);
-            canvas.translate(-gw * 0.5f, -gh * 0.5f);
+            // 走 UiFrame 的变换：命中测试跟着缩放，开场动画期间点到的就是画出来的那个控件。
+            ui.pushTransform();
+            ui.translate(gw * 0.5f, gh * 0.5f);
+            ui.scale(scale);
+            ui.translate(-gw * 0.5f, -gh * 0.5f);
+        }
+        // 关闭动画期间界面已经「关了」，这时的点击不能再切换模块。
+        boolean inputWas = ui.inputEnabled();
+        if (closing) {
+            ui.setInputEnabled(false);
         }
         canvas.pushAlpha(Math.max(0.05f, veil));
-        drawChrome(ui, bridge, dt);
-        canvas.popAlpha();
-        if (xform) {
-            canvas.popTransform();
+        try {
+            drawChrome(ui, bridge, dt);
+        } finally {
+            canvas.popAlpha();
+            ui.setInputEnabled(inputWas);
+            if (xform) {
+                ui.popTransform();
+            }
         }
         return closing && openT <= 0f;
     }
@@ -231,7 +247,8 @@ public final class SharedClickGui {
         float contentH = 8f;
         for (int i = 0; i < mods.size(); i++) {
             ClickGuiBridge.ModInfo mod = mods.get(i);
-            float extra = expandH.containsKey(mod.id) ? expandH.get(mod.id).floatValue() : 0f;
+            float[] state = moduleStates.get(mod.id);
+            float extra = state == null ? 0f : state[1];
             contentH += Metrics.MODULE_ROW + 3f + extra;
         }
         categoryT = Anim.approach(categoryT, 1f, 0.16f, dt);
@@ -267,9 +284,9 @@ public final class SharedClickGui {
                           float x, float y, float w, float dt) {
         boolean open = mod.id.equals(expandedId);
         float targetExtra = open ? settingsHeight(mod, w) : 0f;
-        float extra = Anim.approach(expandH.containsKey(mod.id) ? expandH.get(mod.id).floatValue() : 0f,
-                targetExtra, EXPAND_SPEED, dt);
-        expandH.put(mod.id, Float.valueOf(extra));
+        float[] modState = moduleState(mod.id, mod.enabled);
+        float extra = Anim.approach(modState[1], targetExtra, EXPAND_SPEED, dt);
+        modState[1] = extra;
 
         boolean hover = ui.hovered(x, y, w, Metrics.MODULE_ROW + extra);
         Chrome.card(ui, x, y, w, Metrics.MODULE_ROW + extra, hover, extra > 0.5f);
@@ -301,8 +318,8 @@ public final class SharedClickGui {
         String name = ellipsize(nameFont, mod.name, nameRight - nameX);
         ui.canvas().drawString(nameFont, name, nameX,
                 Chrome.textY(y, Metrics.MODULE_ROW, nameFont), ui.theme().textPrimary());
-        float knob = knob(mod.id, mod.enabled, dt);
-        Chrome.drawSwitch(ui, sx, sy, mod.enabled, knob);
+        modState[0] = Anim.approach(modState[0], mod.enabled ? 1f : 0f, KNOB_SPEED, dt);
+        Chrome.drawSwitch(ui, sx, sy, mod.enabled, modState[0]);
         if (mod.canToggle && ui.clicked(sx, y, sw, Metrics.MODULE_ROW)) {
             bridge.toggle(mod.id);
         } else if (ui.clicked(x, y, w - sw - 10f, Metrics.MODULE_ROW)) {
@@ -350,7 +367,7 @@ public final class SharedClickGui {
         ui.canvas().drawString(font, ellipsize(font, label, w - 34f), x + 20f,
                 Chrome.textY(y, GROUP_ROW, font), ui.theme().textSecondary());
         if (ui.clicked(x + 6f, y, w - 12f, GROUP_ROW)) {
-            collapsedGroups.put(groupKey(moduleId, group.id), Boolean.valueOf(!collapsed));
+            groups(moduleId).put(group.id, Boolean.valueOf(!collapsed));
         }
         return GROUP_ROW;
     }
@@ -360,13 +377,17 @@ public final class SharedClickGui {
         FontHandle labelFont = ui.font(12);
         ui.canvas().drawString(labelFont, ellipsize(labelFont, s.label, w - 118f), x + 10f,
                 Chrome.textY(vy, SETTING_ROW, labelFont), ui.theme().textSecondary());
+        SettingState state = settingState(mod.id, s.id);
         if (s.kind == ClickGuiBridge.SettingInfo.BOOL) {
             float sw = Metrics.SWITCH_W;
             float sh = Metrics.SWITCH_H;
             float sx = x + w - sw - 10f;
             float sy = vy + (SETTING_ROW - sh) / 2f;
-            String kid = mod.id + "." + s.id;
-            Chrome.drawSwitch(ui, sx, sy, s.boolValue, knob(kid, s.boolValue, dt));
+            if (Float.isNaN(state.knob)) {
+                state.knob = s.boolValue ? 1f : 0f;
+            }
+            state.knob = Anim.approach(state.knob, s.boolValue ? 1f : 0f, KNOB_SPEED, dt);
+            Chrome.drawSwitch(ui, sx, sy, s.boolValue, state.knob);
             if (ui.clicked(sx, sy, sw, sh) || ui.clicked(x, vy, w, SETTING_ROW)) {
                 bridge.setBool(mod.id, s.id, !s.boolValue);
             }
@@ -374,43 +395,38 @@ public final class SharedClickGui {
             double span = s.max - s.min;
             float t = span == 0 ? 0f : (float) ((s.numberValue - s.min) / span);
             float sy = vy + (SETTING_ROW - Metrics.SLIDER_H) / 2f;
-            float nt = Chrome.slider(ui, mod.id + "." + s.id, x + 90f, sy, w - 110f, t);
+            float nt = Chrome.slider(ui, state, x + 90f, sy, w - 110f, t);
             double mapped = s.min + nt * span;
             if (Math.abs(mapped - s.numberValue) > 1e-4) {
                 bridge.setNumber(mod.id, s.id, mapped);
             }
         } else if (s.kind == ClickGuiBridge.SettingInfo.TEXT) {
-            String key = mod.id + "." + s.id;
-            TextBox box = fields.get(key);
-            if (box == null) {
-                box = new TextBox(s.textValue);
-                box.setFontSize(11);
-                fields.put(key, box);
+            if (state.field == null) {
+                state.field = newField(s.textValue);
             }
             float bh = 14f;
-            box.draw(ui, x + 90f, vy + (SETTING_ROW - bh) / 2f, w - 110f, bh);
-            if (!box.text().equals(s.textValue)) {
-                bridge.setText(mod.id, s.id, box.text());
+            state.field.draw(ui, x + 90f, vy + (SETTING_ROW - bh) / 2f, w - 110f, bh);
+            if (syncField(state.field, s.textValue)) {
+                bridge.setText(mod.id, s.id, state.field.text());
             }
         } else if (s.kind == ClickGuiBridge.SettingInfo.CHOICE) {
-            String key = mod.id + "." + s.id;
-            boolean open = key.equals(expandedChoice);
+            boolean open = state == expandedChoice;
             String value = s.options.isEmpty() ? "" : s.options.get(Math.max(0, Math.min(s.selectedIndex, s.options.size() - 1)));
             float bw = Math.min(w - 116f, Math.max(44f, ui.font(11).measure(value) + 18f));
             float bx = x + w - bw - 10f;
             if (Chrome.button(ui, bx, vy + 2.5f, bw, 14f, ellipsize(ui.font(11), value, bw - 14f),
                     open ? Chrome.ButtonStyle.PRIMARY : Chrome.ButtonStyle.DEFAULT)) {
-                expandedChoice = open ? null : key;
+                expandedChoice = open ? null : state;
             }
             if (open) {
                 return drawChoices(ui, bridge, mod.id, s, x, vy, w);
             }
         } else if (s.kind == ClickGuiBridge.SettingInfo.COLOR) {
-            return drawColor(ui, bridge, mod.id, s, x, vy, w);
+            return drawColor(ui, bridge, mod.id, s, state, x, vy, w);
         } else if (s.kind == ClickGuiBridge.SettingInfo.KEY) {
             drawKey(ui, mod.id, s.id, s.keyName, false, -1, x, vy, w);
         } else if (s.kind == ClickGuiBridge.SettingInfo.LIST) {
-            return drawList(ui, bridge, mod.id, s, x, vy, w);
+            return drawList(ui, bridge, mod.id, s, state, x, vy, w);
         }
         return SETTING_ROW;
     }
@@ -435,9 +451,8 @@ public final class SharedClickGui {
     }
 
     private float drawColor(UiFrame ui, ClickGuiBridge bridge, String moduleId,
-                            ClickGuiBridge.SettingInfo s, float x, float y, float w) {
-        String key = moduleId + "." + s.id;
-        boolean open = key.equals(expandedColor);
+                            ClickGuiBridge.SettingInfo s, SettingState state, float x, float y, float w) {
+        boolean open = state == expandedColor;
         int rgb = java.awt.Color.HSBtoRGB(s.hue, s.saturation, s.brightness);
         int color = Argb.of(Math.round(s.alpha * 255f), (rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255);
         float dot = 10f;
@@ -447,11 +462,11 @@ public final class SharedClickGui {
         float mw = Math.max(38f, ui.font(10).measure(mode) + 10f);
         if (Chrome.button(ui, dx - mw - 5f, y + 2.5f, mw, 14f, ellipsize(ui.font(10), mode, mw - 8f),
                 open ? Chrome.ButtonStyle.PRIMARY : Chrome.ButtonStyle.GHOST)) {
-            expandedColor = open ? null : key;
+            expandedColor = open ? null : state;
         }
         if (!open) {
             if (ui.clicked(dx - 2f, y, dot + 4f, SETTING_ROW)) {
-                expandedColor = key;
+                expandedColor = state;
             }
             return SETTING_ROW;
         }
@@ -467,10 +482,10 @@ public final class SharedClickGui {
         float markerY = pickerY + (1f - s.brightness) * pickerH;
         ui.canvas().fillCircle(markerX, markerY, 3.25f, ui.theme().white());
         ui.canvas().fillCircle(markerX, markerY, 2f, color | 0xFF000000);
-        String svDrag = key + ".sv";
-        if (ui.input().beginDrag(svDrag, 0, pickerX, pickerY, pickerW, pickerH) || ui.input().isDragging(svDrag)) {
-            float sat = clamp01((ui.input().mouseX() - pickerX) / pickerW);
-            float bri = 1f - clamp01((ui.input().mouseY() - pickerY) / pickerH);
+        Object svDrag = state.svDrag;
+        if (ui.beginDrag(svDrag, pickerX, pickerY, pickerW, pickerH)) {
+            float sat = clamp01((ui.localMouseX() - pickerX) / pickerW);
+            float bri = 1f - clamp01((ui.localMouseY() - pickerY) / pickerH);
             bridge.setColor(moduleId, s.id, s.hue, sat, bri, s.alpha, mode);
             releaseDrag(ui, svDrag);
         }
@@ -486,7 +501,7 @@ public final class SharedClickGui {
 
         float hueY = pickerY + pickerH + 5f;
         drawHue(ui, pickerX, hueY, pickerW, 5f);
-        float hue = dragValue(ui, key + ".hue", pickerX, hueY, pickerW, 5f, s.hue);
+        float hue = dragValue(ui, state.hueDrag, pickerX, hueY, pickerW, 5f, s.hue);
         if (Math.abs(hue - s.hue) > 1e-4f) {
             bridge.setColor(moduleId, s.id, hue, s.saturation, s.brightness, s.alpha, mode);
         }
@@ -495,7 +510,7 @@ public final class SharedClickGui {
         drawChecker(ui, pickerX, alphaY, pickerW, 5f);
         int opaque = color | 0xFF000000;
         ui.canvas().fillGradientH(pickerX, alphaY, pickerW, 5f, opaque & 0x00FFFFFF, opaque);
-        float alpha = dragValue(ui, key + ".alpha", pickerX, alphaY, pickerW, 5f, s.alpha);
+        float alpha = dragValue(ui, state.alphaDrag, pickerX, alphaY, pickerW, 5f, s.alpha);
         if (Math.abs(alpha - s.alpha) > 1e-4f) {
             bridge.setColor(moduleId, s.id, s.hue, s.saturation, s.brightness, alpha, mode);
         }
@@ -517,7 +532,7 @@ public final class SharedClickGui {
     }
 
     private float drawList(UiFrame ui, ClickGuiBridge bridge, String moduleId,
-                           ClickGuiBridge.SettingInfo s, float x, float y, float w) {
+                           ClickGuiBridge.SettingInfo s, SettingState state, float x, float y, float w) {
         float h = SETTING_ROW * (s.items.size() + 1);
         if (s.items.size() < s.maxItems && Chrome.button(ui, x + w - 28f, y + 2.5f, 18f, 14f,
                 "+", Chrome.ButtonStyle.DEFAULT)) {
@@ -529,19 +544,26 @@ public final class SharedClickGui {
             float removeX = x + w - 24f;
             if (Chrome.button(ui, removeX, rowY + 2.5f, 14f, 14f, "×", Chrome.ButtonStyle.GHOST)) {
                 bridge.removeListItem(moduleId, s.id, i);
+                // 输入框按下标缓存：删掉第 i 条后，后面各条的下标整体前移，留着旧框会把
+                // 「已删条目的文字」写回到顶替它的那条上。整组丢掉，下一帧按新列表重建。
+                state.items.clear();
+                if (captureListIndex >= 0 && moduleId.equals(captureModule) && s.id.equals(captureSetting)) {
+                    cancelKeyCapture();
+                }
                 continue;
             }
             if (s.editableItems) {
                 drawKey(ui, moduleId, s.id, item.keyName, true, i, x, rowY, 42f);
-                String fieldKey = moduleId + "." + s.id + "." + i;
-                TextBox box = fields.get(fieldKey);
+                while (state.items.size() <= i) {
+                    state.items.add(null);
+                }
+                TextBox box = state.items.get(i);
                 if (box == null) {
-                    box = new TextBox(item.text);
-                    box.setFontSize(11);
-                    fields.put(fieldKey, box);
+                    box = newField(item.text);
+                    state.items.set(i, box);
                 }
                 box.draw(ui, x + 48f, rowY + 2.5f, w - 78f, 14f);
-                if (!box.text().equals(item.text)) {
+                if (syncField(box, item.text)) {
                     bridge.setListItemText(moduleId, s.id, i, box.text());
                 }
             } else {
@@ -577,10 +599,12 @@ public final class SharedClickGui {
     }
 
     private float settingHeight(String moduleId, ClickGuiBridge.SettingInfo s, float width) {
-        if (s.kind == ClickGuiBridge.SettingInfo.COLOR && (moduleId + "." + s.id).equals(expandedColor)) {
+        if (s.kind == ClickGuiBridge.SettingInfo.COLOR && expandedColor != null
+                && expandedColor == settingState(moduleId, s.id)) {
             return SETTING_ROW + colorPickerHeight(colorPickerWidth(width, !s.options.isEmpty())) + 26f;
         }
-        if (s.kind == ClickGuiBridge.SettingInfo.CHOICE && (moduleId + "." + s.id).equals(expandedChoice)) {
+        if (s.kind == ClickGuiBridge.SettingInfo.CHOICE && expandedChoice != null
+                && expandedChoice == settingState(moduleId, s.id)) {
             int columns = width >= 260f ? 3 : 2;
             int rows = (s.options.size() + columns - 1) / columns;
             return SETTING_ROW + rows * OPTION_ROW + 2f;
@@ -600,17 +624,70 @@ public final class SharedClickGui {
     }
 
     private boolean groupCollapsed(String moduleId, ClickGuiBridge.GroupInfo group) {
-        String key = groupKey(moduleId, group.id);
-        Boolean value = collapsedGroups.get(key);
+        Map<String, Boolean> groups = groups(moduleId);
+        Boolean value = groups.get(group.id);
         if (value == null) {
             value = Boolean.valueOf(group.collapsedByDefault);
-            collapsedGroups.put(key, value);
+            groups.put(group.id, value);
         }
         return value.booleanValue();
     }
 
-    private static String groupKey(String moduleId, String groupId) {
-        return moduleId + ".group." + groupId;
+    private Map<String, Boolean> groups(String moduleId) {
+        Map<String, Boolean> groups = collapsedGroups.get(moduleId);
+        if (groups == null) {
+            groups = new HashMap<String, Boolean>();
+            collapsedGroups.put(moduleId, groups);
+        }
+        return groups;
+    }
+
+    private SettingState settingState(String moduleId, String settingId) {
+        Map<String, SettingState> perModule = settingStates.get(moduleId);
+        if (perModule == null) {
+            perModule = new HashMap<String, SettingState>();
+            settingStates.put(moduleId, perModule);
+        }
+        SettingState state = perModule.get(settingId);
+        if (state == null) {
+            state = new SettingState();
+            perModule.put(settingId, state);
+        }
+        return state;
+    }
+
+    private float[] moduleState(String moduleId, boolean enabled) {
+        float[] state = moduleStates.get(moduleId);
+        if (state == null) {
+            state = new float[]{enabled ? 1f : 0f, 0f};
+            moduleStates.put(moduleId, state);
+        }
+        return state;
+    }
+
+    private static TextBox newField(String text) {
+        TextBox box = new TextBox(text);
+        box.setFontSize(11);
+        return box;
+    }
+
+    /**
+     * Two-way sync between a field and the value the bridge reports this frame.
+     *
+     * <p>The bridge is the source of truth unless the user just typed: a field the user edited this
+     * frame is written back (returns {@code true}); otherwise an unfocused field adopts the external
+     * value. Writing back on every mismatch instead would push a stale field over a value changed
+     * elsewhere — a profile load, a command, or the list shifting after a delete.
+     */
+    static boolean syncField(TextBox box, String external) {
+        String value = external == null ? "" : external;
+        if (box.changed()) {
+            return !box.text().equals(value);
+        }
+        if (!box.focused() && !box.text().equals(value)) {
+            box.setText(value);
+        }
+        return false;
     }
 
     private boolean smallOption(UiFrame ui, float x, float y, float w, float h, String label, boolean selected) {
@@ -647,16 +724,16 @@ public final class SharedClickGui {
         }
     }
 
-    private static float dragValue(UiFrame ui, String id, float x, float y, float w, float h, float value) {
-        if (ui.input().beginDrag(id, 0, x, y, w, h) || ui.input().isDragging(id)) {
-            value = clamp01((ui.input().mouseX() - x) / w);
+    private static float dragValue(UiFrame ui, Object id, float x, float y, float w, float h, float value) {
+        if (ui.beginDrag(id, x, y, w, h)) {
+            value = clamp01((ui.localMouseX() - x) / w);
             releaseDrag(ui, id);
         }
         ui.canvas().fillCircle(x + value * w, y + h * 0.5f, 2.75f, ui.theme().white());
         return value;
     }
 
-    private static void releaseDrag(UiFrame ui, String id) {
+    private static void releaseDrag(UiFrame ui, Object id) {
         if (!ui.input().isButtonDown(0)) {
             ui.input().releaseDrag(id);
         }
@@ -682,14 +759,6 @@ public final class SharedClickGui {
         captureModule = null;
         captureSetting = null;
         captureListIndex = -1;
-    }
-
-    private float knob(String id, boolean on, float dt) {
-        float target = on ? 1f : 0f;
-        float cur = knobs.containsKey(id) ? knobs.get(id).floatValue() : target;
-        float next = Anim.approach(cur, target, KNOB_SPEED, dt);
-        knobs.put(id, Float.valueOf(next));
-        return next;
     }
 
     private void tickOpen(float dt) {
@@ -718,26 +787,21 @@ public final class SharedClickGui {
     }
 
     private static String ellipsize(FontHandle font, String text, float max) {
-        if (text == null) {
-            return "";
-        }
-        if (max <= 0f || font.measure(text) <= max) {
-            return text;
-        }
-        String dots = "...";
-        if (font.measure(dots) >= max) {
-            return dots;
-        }
-        for (int i = text.length() - 1; i > 0; i--) {
-            String cut = text.substring(0, i) + dots;
-            if (font.measure(cut) <= max) {
-                return cut;
-            }
-        }
-        return dots;
+        return TextFit.ellipsize(font, text, max);
     }
 
     private static float clamp01(float value) {
         return value < 0f ? 0f : (value > 1f ? 1f : value);
+    }
+
+    /** UI-only state of one setting row. Its identity doubles as the drag owner for sliders. */
+    private static final class SettingState {
+        float knob = Float.NaN;
+        TextBox field;
+        /** Fields of an editable list, by item index; cleared whenever an item is removed. */
+        final List<TextBox> items = new ArrayList<TextBox>();
+        final Object svDrag = new Object();
+        final Object hueDrag = new Object();
+        final Object alphaDrag = new Object();
     }
 }

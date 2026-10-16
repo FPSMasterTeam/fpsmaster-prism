@@ -31,6 +31,11 @@ public final class SharedAccountOverlay {
     private boolean usernameInvalid;
     private final Map<String, Float> hover = new HashMap<String, Float>();
     private float popT;
+    /**
+     * Account whose delete icon was clicked once. Removing is a two-click action: a stray click on
+     * the small icon used to drop a Microsoft account outright, forcing a new device-code login.
+     */
+    private String removeArmed;
     private long lastNanos;
 
     public SharedAccountOverlay() {
@@ -92,6 +97,9 @@ public final class SharedAccountOverlay {
                 bridge.cancelMicrosoftLogin();
             }
             close();
+        }
+        if (!popOpen) {
+            removeArmed = null;
         }
         if (dialog == Dialog.OFFLINE) {
             drawOffline(ui, bridge);
@@ -182,21 +190,34 @@ public final class SharedAccountOverlay {
         ui.canvas().drawString(ui.font(10), row.typeLabel, x + 24f, y + 12f, ui.theme().textDisabled());
         float rightX = x + w - 16f;
         boolean removeHover = false;
-        if (hover && row.removable) {
+        boolean armed = row.removable && row.id.equals(removeArmed);
+        if (armed) {
+            String confirm = Tr.of(bridge.i18n("mainmenu.account.remove.confirm"),
+                    "mainmenu.account.remove.confirm", "再点一次删除");
+            FontHandle small = ui.font(10);
+            ui.canvas().drawString(small, confirm, rightX - 4f - small.measure(confirm), y + 7f, ui.theme().danger());
+        }
+        if ((hover || armed) && row.removable) {
             removeHover = ui.hovered(rightX, y + 5f, 12f, 12f);
-            if (removeHover) {
+            if (removeHover || armed) {
                 ui.canvas().fillRoundRect(rightX - 1f, y + 4f, 14f, 14f, 4f, ui.theme().dangerSoft());
             }
             GlyphIcons.draw(ui, "delete", rightX + 0.5f, y + 6.5f, 9f,
-                    removeHover ? ui.theme().danger() : ui.theme().textDisabled());
+                    removeHover || armed ? ui.theme().danger() : ui.theme().textDisabled());
         } else if (row.current) {
             GlyphIcons.draw(ui, "check", rightX, y + 7f, 8f, ui.theme().accentText());
         }
         if (row.removable && removeHover && popOpen && ui.clicked(rightX, y + 5f, 12f, 12f)) {
-            bridge.removeAccount(row.id);
+            if (armed) {
+                removeArmed = null;
+                bridge.removeAccount(row.id);
+            } else {
+                removeArmed = row.id;
+            }
             return;
         }
         if (popOpen && ui.clicked(x, y, w, h)) {
+            removeArmed = null;
             bridge.selectAccount(row.id);
             popOpen = false;
         }

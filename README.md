@@ -101,6 +101,18 @@ void render(float mouseX, float mouseY) {
 
 参考实现：`FPSMaster-Edge/src/main/java/top/fpsmaster/ui/kit/EdgeHost.java` · `FPSMaster-Nova/src/main/kotlin/top/fpsmaster/ui/kit/NovaHost.kt`；单测对照 `fpsmaster-prism/src/test/java/top/fpsmaster/prism/test/HeadlessHost.java`。
 
+### 4. 输入映射（宿主必须做）
+
+* 文本：键盘与输入法提交的文字都走 `FrameInput.type(...)`（控制字符由 `TextBox` 过滤）。
+* 编辑键：`Keys.BACKSPACE / DELETE / LEFT / RIGHT / HOME / END`；Ctrl（macOS 为 Cmd）+A/C/X/V 分别映射成 `Keys.SELECT_ALL / COPY / CUT / PASTE`，不要再当成字母输入。
+* 选择：每帧 `setKeyDown(Keys.SHIFT, 任一 Shift 是否按下)`。
+* 剪贴板：`Input.clipboard()` / `setClipboard()` 接到系统剪贴板。自己实现 `Input` 的宿主直接读写系统剪贴板；直接用 `FrameInput` 的宿主调用 `setClipboardBackend(读, 写)`。遮蔽（密码）输入框不会复制或剪切。
+* 字体或资源重载后调用 `TextFit.clearCache()`。
+
+### 5. 变换与模态
+
+屏幕内需要命中测试的变换走 `UiFrame.pushTransform / translate / scale / popTransform`，不要直接调 `canvas()`，命中测试才会跟着画面。模态弹窗底下的内容用 `ui.setInputEnabled(false)` 绘制。
+
 ## 共享屏幕
 
 | 屏幕 | 共享实现 | 宿主 Bridge |

@@ -6,6 +6,22 @@ import java.util.List;
 
 public interface MusicBridge {
     enum PlaybackMode { SEQUENTIAL, SHUFFLE, REPEAT_ONE }
+
+    /**
+     * What a list currently shows. An empty list alone cannot tell "still loading" from "nothing
+     * there", "needs login" or "request failed", so hosts report the state explicitly.
+     */
+    enum ListState {
+        /** The list holds the result of the last request (possibly empty). */
+        READY,
+        /** A request is in flight. */
+        LOADING,
+        /** The source needs a logged-in account for this list (e.g. NetEase daily picks / my playlists). */
+        NEED_LOGIN,
+        /** The last request failed; see {@link #tracksError()} / {@link #playlistsError()}. */
+        ERROR
+    }
+
     String i18n(String key);
 
     boolean qq();
@@ -65,6 +81,38 @@ public interface MusicBridge {
 
     String listTitle();
 
+    /**
+     * State of {@link #tracks()} (discover, search results, an opened playlist). Hosts set
+     * {@link ListState#LOADING} when they start a request and {@link ListState#READY} /
+     * {@link ListState#ERROR} / {@link ListState#NEED_LOGIN} when it settles.
+     * <p>
+     * The default is for hosts that do not report state yet: like Prism before 0.2.2 it treats an
+     * empty list as still loading, otherwise those hosts would show "no songs" while a request is
+     * in flight.
+     */
+    default ListState tracksState() {
+        return tracks().isEmpty() ? ListState.LOADING : ListState.READY;
+    }
+
+    /** User-facing reason when {@link #tracksState()} is {@link ListState#ERROR}. */
+    default String tracksError() {
+        return "";
+    }
+
+    /**
+     * State of {@link #playlistRows()}; same contract as {@link #tracksState()}. The default, for
+     * hosts that do not report state yet, keeps the pre-0.2.2 behaviour: an empty list while logged
+     * out asks the user to log in instead of claiming there are no playlists.
+     */
+    default ListState playlistsState() {
+        return !loggedIn() && playlistRows().isEmpty() ? ListState.NEED_LOGIN : ListState.READY;
+    }
+
+    /** User-facing reason when {@link #playlistsState()} is {@link ListState#ERROR}. */
+    default String playlistsError() {
+        return "";
+    }
+
     void search(String query);
 
     void loadDiscover();
@@ -87,6 +135,10 @@ public interface MusicBridge {
     default void stopLogin() {
     }
 
+    /**
+     * Log out of the current source. Screens call this only after the user confirms; it is never
+     * triggered by a single click.
+     */
     default void logout() {
     }
 

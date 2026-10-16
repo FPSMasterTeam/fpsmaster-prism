@@ -15,4 +15,14 @@ class FrameInputTest {
         input.endFrame();
         assertEquals(-1, input.consumeRawKey());
     }
+
+    @Test
+    void clipboardGoesThroughHostBackend() {
+        FrameInput input = new FrameInput();
+        final String[] system = {"from-os"};
+        input.setClipboardBackend(() -> system[0], text -> system[0] = text);
+        assertEquals("from-os", input.clipboard());
+        input.setClipboard("copied");
+        assertEquals("copied", system[0]);
+    }
 }

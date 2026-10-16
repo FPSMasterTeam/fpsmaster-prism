@@ -3,6 +3,7 @@ package top.fpsmaster.prism.screen;
 import top.fpsmaster.prism.anim.Anim;
 import top.fpsmaster.prism.canvas.FontHandle;
 import top.fpsmaster.prism.theme.Argb;
+import top.fpsmaster.prism.widget.TextFit;
 import top.fpsmaster.prism.widget.UiFrame;
 
 import java.util.List;
@@ -10,17 +11,22 @@ import java.util.List;
 /** Shared timed-lyrics layout used by the immersive player and both clients' HUDs. */
 public final class SharedLyrics {
     private float scrollLine = Float.NaN;
+    /** Signature of the lyrics last laid out, to notice a song change. */
+    private int lastSize = -1;
+    private String lastFirst = "";
 
     public void drawImmersive(UiFrame ui, MusicBridge bridge, float x, float y, float w, float h, float dt) {
         List<MusicBridge.LyricRow> rows = bridge.lyricRows();
         int current = bridge.currentLyricIndex();
         if (rows.isEmpty()) {
-            centered(ui, bridge.playing() ? "歌词加载中…" : "未在播放", x, y + h * 0.5f, w,
-                    16, ui.theme().textDisabled());
+            String text = bridge.playing()
+                    ? Tr.of(bridge.i18n("music.lyrics.loading"), "music.lyrics.loading", "歌词加载中…")
+                    : Tr.of(bridge.i18n("music.lyrics.idle"), "music.lyrics.idle", "未在播放");
+            centered(ui, text, x, y + h * 0.5f, w, 16, ui.theme().textDisabled());
             return;
         }
         float target = Math.max(0, current);
-        scrollLine = Float.isNaN(scrollLine) ? target : Anim.approach(scrollLine, target, 0.34f, dt);
+        scrollLine = follow(rows, target, 8f, 0.34f, dt);
         float centerY = y + h * 0.44f;
         for (int i = 0; i < rows.size(); i++) {
             MusicBridge.LyricRow row = rows.get(i);
@@ -54,7 +60,7 @@ public final class SharedLyrics {
             ui.canvas().fillRoundRect(x, y, w, h, 6f, style.backgroundColor);
         }
         float target = style.scroll ? current : 0f;
-        scrollLine = Float.isNaN(scrollLine) ? target : Anim.approach(scrollLine, target, 0.28f, dt);
+        scrollLine = follow(rows, target, count * 2f, 0.28f, dt);
         float firstLine = style.scroll ? Math.max(0f, scrollLine - count * 0.5f) : current;
         int first = (int) Math.floor(firstLine);
         float fractional = firstLine - first;
@@ -76,6 +82,22 @@ public final class SharedLyrics {
         }
     }
 
+    /**
+     * Ease the scroll position toward {@code target}, but jump straight there on a new song or a
+     * seek: easing from the previous song's line 40 back to line 0 left the HUD blank (the window
+     * pointed past the new, shorter lyrics) and swept the immersive page through the whole song.
+     */
+    private float follow(List<MusicBridge.LyricRow> rows, float target, float jump, float speed, float dt) {
+        String first = rows.get(0).text;
+        boolean newSong = rows.size() != lastSize || !first.equals(lastFirst);
+        lastSize = rows.size();
+        lastFirst = first;
+        if (Float.isNaN(scrollLine) || newSong || Math.abs(target - scrollLine) > jump) {
+            return target;
+        }
+        return Anim.approach(scrollLine, target, speed, dt);
+    }
+
     public static float hudHeight(HudStyle style) {
         return Math.max(1, Math.min(5, style.lineCount))
                 * (style.fontSize * 0.5f + (style.showTranslation ? 10f : 5f)) + 10f;
@@ -88,13 +110,7 @@ public final class SharedLyrics {
     }
 
     private static String ellipsize(FontHandle font, String text, float max) {
-        if (text == null || text.isEmpty()) return "";
-        if (font.measure(text) <= max) return text;
-        for (int i = text.length() - 1; i > 0; i--) {
-            String cut = text.substring(0, i) + "…";
-            if (font.measure(cut) <= max) return cut;
-        }
-        return "…";
+        return TextFit.ellipsize(font, text, max, TextFit.ELLIPSIS);
     }
 
     public static final class HudStyle {

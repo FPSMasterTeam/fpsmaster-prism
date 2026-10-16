@@ -5,6 +5,7 @@ import top.fpsmaster.prism.input.Keys;
 import top.fpsmaster.prism.theme.Metrics;
 import top.fpsmaster.prism.widget.Chrome;
 import top.fpsmaster.prism.widget.TextBox;
+import top.fpsmaster.prism.widget.TextFit;
 import top.fpsmaster.prism.widget.UiFrame;
 
 /**
@@ -185,13 +186,6 @@ public final class SharedSignIn {
     }
 
     private static String clamp(FontHandle font, String text, float maxWidth) {
-        if (font.measure(text) <= maxWidth) {
-            return text;
-        }
-        String shown = text;
-        while (shown.length() > 4 && font.measure(shown + "…") > maxWidth) {
-            shown = shown.substring(0, shown.length() - 1);
-        }
-        return shown + "…";
+        return TextFit.ellipsize(font, text, maxWidth, TextFit.ELLIPSIS);
     }
 }

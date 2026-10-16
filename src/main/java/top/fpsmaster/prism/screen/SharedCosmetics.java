@@ -10,6 +10,7 @@ import top.fpsmaster.prism.input.PointerEvent;
 import top.fpsmaster.prism.theme.Metrics;
 import top.fpsmaster.prism.widget.Chrome;
 import top.fpsmaster.prism.widget.Scroll;
+import top.fpsmaster.prism.widget.TextFit;
 import top.fpsmaster.prism.widget.UiFrame;
 
 /** Compact in-game cosmetics shop. Minecraft entity rendering remains in the client bridge. */
@@ -988,12 +989,7 @@ public final class SharedCosmetics {
     }
 
     private String fit(FontHandle font, String value, float maxWidth) {
-        if (value == null) return "";
-        if (font.measure(value) <= maxWidth) return value;
-        String ellipsis = "...";
-        int end = value.length();
-        while (end > 0 && font.measure(value.substring(0, end) + ellipsis) > maxWidth) end--;
-        return end == 0 ? ellipsis : value.substring(0, end) + ellipsis;
+        return TextFit.ellipsize(font, value, maxWidth);
     }
 
     private float wrapDegrees(float degrees) {

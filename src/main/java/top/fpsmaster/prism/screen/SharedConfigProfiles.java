@@ -5,6 +5,7 @@ import top.fpsmaster.prism.theme.Metrics;
 import top.fpsmaster.prism.widget.Chrome;
 import top.fpsmaster.prism.widget.Scroll;
 import top.fpsmaster.prism.widget.TextBox;
+import top.fpsmaster.prism.widget.TextFit;
 import top.fpsmaster.prism.widget.UiFrame;
 
 import java.util.List;
@@ -40,11 +41,22 @@ public final class SharedConfigProfiles {
         ui.canvas().fillRect(px + 1, py + 1, leftW - 1, ph - 2, ui.theme().layer());
         Chrome.hairlineV(ui, px + leftW, py + 1, ph - 2);
 
-        if (back(ui, px + 7f, py + 7f, bridge.i18n("configprofiles.back"))) {
-            return true;
+        // 确认弹窗是模态：底下照常画，但不响应输入。底下先绘制，不关掉的话第二排卡片的
+        // 「应用」会先于弹窗的「确认/取消」吃掉同一次点击，把「删除 X？」悄悄换成「加载 Y？」。
+        boolean modal = dialog != Dialog.NONE;
+        boolean inputWas = ui.inputEnabled();
+        if (modal) {
+            ui.setInputEnabled(false);
         }
-        drawCurrent(ui, bridge, px, py, leftW, ph);
-        drawAll(ui, bridge, px + leftW, py, pw - leftW, ph);
+        try {
+            if (back(ui, px + 7f, py + 7f, bridge.i18n("configprofiles.back"))) {
+                return true;
+            }
+            drawCurrent(ui, bridge, px, py, leftW, ph);
+            drawAll(ui, bridge, px + leftW, py, pw - leftW, ph);
+        } finally {
+            ui.setInputEnabled(inputWas);
+        }
         if (dialog != Dialog.NONE) {
             drawDialog(ui, bridge, px, py, pw, ph);
         }
@@ -89,7 +101,7 @@ public final class SharedConfigProfiles {
         float exportY = resetY - 4f - btnH;
         if (dialog == Dialog.NONE && Chrome.button(ui, colX, exportY, colW, btnH,
                 bridge.i18n("configprofiles.export.share"), Chrome.ButtonStyle.DEFAULT)) {
-            setStatus(bridge.exportActive(), ui.theme().ok());
+            setStatus(ui, bridge.exportActive());
         }
         if (dialog == Dialog.NONE && Chrome.button(ui, colX, resetY, colW, btnH,
                 bridge.i18n("configprofiles.preset.alloff"), Chrome.ButtonStyle.DANGER)) {
@@ -121,7 +133,7 @@ public final class SharedConfigProfiles {
         float importW = Math.max(44f, ui.font(12).measure(bridge.i18n("configprofiles.importfile")) + 16f);
         if (dialog == Dialog.NONE && Chrome.button(ui, x + w - 11f - importW, y + 9f, importW, 16f,
                 bridge.i18n("configprofiles.importfile"), Chrome.ButtonStyle.DEFAULT)) {
-            setStatus(bridge.importFile(), ui.theme().ok());
+            setStatus(ui, bridge.importFile());
         }
         float footH = 15f;
         Chrome.hairlineH(ui, x + 1f, y + h - footH, w - 2f);
@@ -280,7 +292,7 @@ public final class SharedConfigProfiles {
     }
 
     private void runDialog(ConfigProfilesBridge bridge, UiFrame ui) {
-        String msg;
+        ConfigProfilesBridge.Result msg;
         switch (dialog) {
             case LOAD:
                 msg = bridge.load(dialogName);
@@ -298,14 +310,13 @@ public final class SharedConfigProfiles {
                 msg = bridge.rename(dialogName, nameBox.text());
                 break;
         }
-        setStatus(msg, msg.contains("失败") || msg.toLowerCase().contains("fail")
-                ? ui.theme().danger() : ui.theme().ok());
+        setStatus(ui, msg);
         dialog = Dialog.NONE;
     }
 
-    private void setStatus(String text, int color) {
-        status = text == null ? "" : text;
-        statusColor = color;
+    private void setStatus(UiFrame ui, ConfigProfilesBridge.Result result) {
+        status = result == null ? "" : result.message;
+        statusColor = result != null && result.ok ? ui.theme().ok() : ui.theme().danger();
         statusUntil = System.currentTimeMillis() + 4000L;
     }
 
@@ -337,18 +348,6 @@ public final class SharedConfigProfiles {
     }
 
     private static String ellipsize(top.fpsmaster.prism.canvas.FontHandle font, String text, float max) {
-        if (text == null) {
-            return "";
-        }
-        if (font.measure(text) <= max) {
-            return text;
-        }
-        for (int i = text.length() - 1; i > 0; i--) {
-            String cut = text.substring(0, i) + "...";
-            if (font.measure(cut) <= max) {
-                return cut;
-            }
-        }
-        return "...";
+        return TextFit.ellipsize(font, text, max);
     }
 }
