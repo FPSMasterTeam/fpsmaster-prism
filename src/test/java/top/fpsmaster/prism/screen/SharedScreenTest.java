@@ -48,6 +48,25 @@ class SharedScreenTest {
     }
 
     @Test
+    void clickGuiIgnoresClicksWhileClosing() {
+        HeadlessHost host = new HeadlessHost(500, 320);
+        ClickBridge bridge = new ClickBridge();
+        SharedClickGui gui = new SharedClickGui("optimize");
+        gui.onOpen();
+        for (int i = 0; i < 30; i++) {
+            host.advanceMillis(16);
+            gui.draw(new UiFrame(host, Theme.DARK), bridge);
+            host.input.endFrame();
+        }
+        gui.beginClose();
+        host.advanceMillis(16);
+        host.input.setMouse(450, 46);
+        host.input.press(0, 450, 46);
+        gui.draw(new UiFrame(host, Theme.DARK), bridge);
+        assertTrue(bridge.toggled.isEmpty());
+    }
+
+    @Test
     void clickGuiUsesSharedVisibilityAndGroupMetadata() {
         HeadlessHost host = new HeadlessHost(500, 320);
         ClickBridge bridge = new ClickBridge();
@@ -247,6 +266,26 @@ class SharedScreenTest {
         assertTrue(host.canvas.has("drawString:default"));
     }
 
+    @Test
+    void configProfileDialogIsModalOverCardButtons() {
+        HeadlessHost host = new HeadlessHost(400, 250);
+        SharedConfigProfiles gui = new SharedConfigProfiles();
+        ProfilesBridge bridge = new ProfilesBridge();
+        for (int i = 1; i <= 3; i++) {
+            bridge.list.add(new ConfigProfilesBridge.Profile("p" + i, 0L, 1L));
+        }
+        // Panel 376x218 at (12,16); "reset all off" is the bottom button of the left column.
+        float resetY = 16f + 218f - 12f - top.fpsmaster.prism.theme.Metrics.BTN_H;
+        host.input.press(0, 60, Math.round(resetY + 4f));
+        gui.draw(new UiFrame(host, Theme.DARK), bridge);
+        host.input.endFrame();
+        // (250,146) is both the dialog's confirm button and card #3's "apply" in the second row,
+        // which is drawn first. The dialog must win.
+        host.input.press(0, 250, 146);
+        gui.draw(new UiFrame(host, Theme.DARK), bridge);
+        assertEquals(java.util.Collections.singletonList("reset"), bridge.calls);
+    }
+
     private static final class RecordingBridge implements MenuBridge {
         final List<String> actions = new ArrayList<String>();
 
@@ -409,9 +448,19 @@ class SharedScreenTest {
     }
 
     private static final class ProfilesBridge implements ConfigProfilesBridge {
+        final java.util.List<Profile> list = new java.util.ArrayList<Profile>();
+        final List<String> calls = new ArrayList<String>();
+
+        ProfilesBridge() {
+            list.add(new Profile("default", System.currentTimeMillis(), 12L));
+        }
+
         public String i18n(String key) {
             if ("configprofiles.count".equals(key)) {
                 return "%s";
+            }
+            if (key.startsWith("configprofiles.confirm.") ) {
+                return "%s?";
             }
             return key;
         }
@@ -421,8 +470,6 @@ class SharedScreenTest {
         }
 
         public java.util.List<Profile> profiles() {
-            java.util.List<Profile> list = new java.util.ArrayList<Profile>();
-            list.add(new Profile("default", System.currentTimeMillis(), 12L));
             return list;
         }
 
@@ -446,32 +493,35 @@ class SharedScreenTest {
             return true;
         }
 
-        public String load(String name) {
-            return name;
+        public Result load(String name) {
+            calls.add("load:" + name);
+            return Result.ok(name);
         }
 
-        public String delete(String name) {
-            return name;
+        public Result delete(String name) {
+            calls.add("delete:" + name);
+            return Result.ok(name);
         }
 
-        public String rename(String from, String to) {
-            return to;
+        public Result rename(String from, String to) {
+            return Result.ok(to);
         }
 
-        public String create(String name) {
-            return name;
+        public Result create(String name) {
+            return Result.ok(name);
         }
 
-        public String exportActive() {
-            return "ok";
+        public Result exportActive() {
+            return Result.ok("ok");
         }
 
-        public String importFile() {
-            return "ok";
+        public Result importFile() {
+            return Result.failed("bad file");
         }
 
-        public String resetAllOff() {
-            return "ok";
+        public Result resetAllOff() {
+            calls.add("reset");
+            return Result.ok("ok");
         }
     }
 

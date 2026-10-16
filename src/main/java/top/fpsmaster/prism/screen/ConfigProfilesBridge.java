@@ -19,19 +19,44 @@ public interface ConfigProfilesBridge {
 
     boolean isDefault(String name);
 
-    String load(String name);
+    /*
+     * Operations return a structured Result: the screen colours the status line from Result.ok and
+     * shows Result.message as is. It used to guess success by searching the message for "失败" /
+     * "fail", which broke in every other language.
+     */
 
-    String delete(String name);
+    Result load(String name);
 
-    String rename(String from, String to);
+    Result delete(String name);
 
-    String create(String name);
+    Result rename(String from, String to);
 
-    String exportActive();
+    Result create(String name);
 
-    String importFile();
+    Result exportActive();
 
-    String resetAllOff();
+    Result importFile();
+
+    Result resetAllOff();
+
+    /** Outcome of a profile operation: whether it succeeded and the localized line to show. */
+    final class Result {
+        public final boolean ok;
+        public final String message;
+
+        private Result(boolean ok, String message) {
+            this.ok = ok;
+            this.message = message == null ? "" : message;
+        }
+
+        public static Result ok(String message) {
+            return new Result(true, message);
+        }
+
+        public static Result failed(String message) {
+            return new Result(false, message);
+        }
+    }
 
     final class Profile {
         public final String name;
