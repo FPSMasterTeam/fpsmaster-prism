@@ -106,7 +106,7 @@ void render(float mouseX, float mouseY) {
 * 文本：键盘与输入法提交的文字都走 `FrameInput.type(...)`（控制字符由 `TextBox` 过滤）。
 * 编辑键：`Keys.BACKSPACE / DELETE / LEFT / RIGHT / HOME / END`；Ctrl（macOS 为 Cmd）+A/C/X/V 分别映射成 `Keys.SELECT_ALL / COPY / CUT / PASTE`，不要再当成字母输入。
 * 选择：每帧 `setKeyDown(Keys.SHIFT, 任一 Shift 是否按下)`。
-* 剪贴板：`Input.clipboard()` / `setClipboard()` 接到系统剪贴板；遮蔽（密码）输入框不会复制或剪切。
+* 剪贴板：`Input.clipboard()` / `setClipboard()` 接到系统剪贴板。自己实现 `Input` 的宿主直接读写系统剪贴板；直接用 `FrameInput` 的宿主调用 `setClipboardBackend(读, 写)`。遮蔽（密码）输入框不会复制或剪切。
 * 字体或资源重载后调用 `TextFit.clearCache()`。
 
 ### 5. 变换与模态

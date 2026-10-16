@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Concrete {@link Input} for hosts and tests. Feed {@link #setMouse}, {@link #press},
@@ -37,6 +39,8 @@ public final class FrameInput implements Input {
     private Object dragOwner;
     private int dragButton = -1;
     private String clipboard = "";
+    private Supplier<String> clipboardReader;
+    private Consumer<String> clipboardWriter;
 
     public void setMouse(int x, int y) {
         this.mouseX = x;
@@ -239,11 +243,29 @@ public final class FrameInput implements Input {
         return text;
     }
 
+    /**
+     * Back {@link #clipboard()} / {@link #setClipboard} with the system clipboard. Without it the
+     * clipboard is a field local to this input, so copy/paste in text fields never leaves the screen.
+     */
+    public void setClipboardBackend(Supplier<String> reader, Consumer<String> writer) {
+        this.clipboardReader = reader;
+        this.clipboardWriter = writer;
+    }
+
     public String clipboard() {
+        if (clipboardReader != null) {
+            String text = clipboardReader.get();
+            return text == null ? "" : text;
+        }
         return clipboard;
     }
 
     public void setClipboard(String text) {
-        this.clipboard = text == null ? "" : text;
+        String value = text == null ? "" : text;
+        if (clipboardWriter != null) {
+            clipboardWriter.accept(value);
+        } else {
+            this.clipboard = value;
+        }
     }
 }
